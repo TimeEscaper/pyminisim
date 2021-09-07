@@ -4,13 +4,19 @@ from pyminisim.measures.point import Point
 from pyminisim.measures.velocity import Velocity
 
 
-class SimAgent(ABC):
-    def __init__(self, agent_id: int, initial_position: Point, initial_velocity: Velocity, radius: float,
+class SFMAgent(ABC):
+    def __init__(self,
+                 agent_id: int,
+                 initial_position: Point,
+                 initial_velocity: Velocity,
+                 max_velocity: float,
+                 radius: float,
                  name: str = ""):
         self._agent_id = agent_id
         self._name = name
         self.position = initial_position
         self.velocity = initial_velocity
+        self._max_vel = max_velocity
         self._radius = radius
 
     @property
@@ -36,6 +42,10 @@ class SimAgent(ABC):
     @velocity.setter
     def velocity(self, value: Velocity):
         self._velocity = value
+
+    @property
+    def max_velocity(self) -> float:
+        return self._max_vel
 
     @property
     def radius(self) -> float:

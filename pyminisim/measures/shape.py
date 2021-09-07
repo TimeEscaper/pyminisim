@@ -10,9 +10,6 @@ class Shape(ABC):
     def get_closest_point(self, target: Point) -> Point:
         raise NotImplementedError()
 
-    def get_closest_point_distance(self, target: Point) -> float:
-        return target.distance(self.get_closest_point(target))
-
 
 class Segment(Shape):
 
