@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+from typing import List
 
 from pyminisim.measures.point import Point
 
@@ -11,10 +12,17 @@ class Shape(ABC):
         raise NotImplementedError()
 
 
-class Segment(Shape):
+class PolygonalShape(Shape, ABC):
+
+    @abstractmethod
+    def get_segments(self) -> np.ndarray:
+        raise NotImplementedError()
+
+
+class Segment(PolygonalShape):
 
     def __init__(self, start_point: Point, end_point: Point):
-        super(Shape, self).__init__()
+        super(PolygonalShape, self).__init__()
         self._start_point = start_point
         self._end_point = end_point
 
@@ -37,8 +45,11 @@ class Segment(Shape):
         else:
             return Point(self._start_point.vector + alpha * end_point_vec)
 
+    def get_segments(self) -> np.ndarray:
+        return np.array([[self._start_point.x, self._end_point.x, self._start_point.y, self._end_point.y]])
 
-class Box(Shape):
+
+class Box(PolygonalShape):
 
     def __init__(self, tl: Point, tr: Point, br: Point, bl: Point):
         self._tl = tl
@@ -63,8 +74,14 @@ class Box(Shape):
         return self._bl
 
     def get_closest_point(self, target: Point) -> Point:
-        segment_points = [Segment(self._tl, self._tr).get_closest_point(target),
-                          Segment(self._tl, self._bl).get_closest_point(target),
-                          Segment(self._tr, self._br).get_closest_point(target),
-                          Segment(self._br, self._bl).get_closest_point(target)]
+        segment_points = [segment.get_closest_point(target) for segment in self._to_segments()]
         return segment_points[np.argmin([segment_point.distance(target) for segment_point in segment_points])]
+
+    def get_segments(self) -> np.ndarray:
+        return np.concatenate([segment.get_segments() for segment in self._to_segments()], axis=1)
+
+    def _to_segments(self) -> List[Segment]:
+        return [Segment(self._tl, self._tr),
+                Segment(self._tl, self._bl),
+                Segment(self._tr, self._br),
+                Segment(self._br, self._bl)]
