@@ -1,4 +1,2 @@
+pygame==2.1.0
 numpy
-scipy
-matplotlib
-pysocialforce
