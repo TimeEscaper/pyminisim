@@ -27,8 +27,8 @@ class UnicycleMotion:
     def poses(self) -> np.ndarray:
         return self._poses
 
-    def simulate(self, dt: float):
-        x = self._poses[:, 0] + self._velocities[:, 0] * np.cos(self._poses[:, 2]) * dt
-        y = self._poses[:, 1] + self._velocities[:, 0] * np.sin(self._poses[:, 2]) * dt
+    def step(self, dt: float):
+        x = self._poses[:, 0] + self._velocities[:, 0] * np.cos(np.deg2rad(self._poses[:, 2])) * dt
+        y = self._poses[:, 1] + self._velocities[:, 0] * np.sin(np.deg2rad(self._poses[:, 2])) * dt
         w = wrap_angle(self._poses[:, 2] + self._velocities[:, 1] * dt)
-        self._poses = np.concatenate((x, y, w), axis=1)
+        self._poses = np.stack((x, y, w), axis=1)
