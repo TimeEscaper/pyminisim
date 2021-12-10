@@ -4,8 +4,10 @@ import numpy as np
 import pygame
 
 from pyminisim.visual.agents_visual import RobotVisual, PedestrianVisual
-from pyminisim.core.common import Pose
+from pyminisim.core.common import Pose, Velocity
 from pyminisim.core.motion import UnicycleMotion
+from pyminisim.core.common import RobotAgent, PedestrianAgent
+from pyminisim.core.simulation import World, PedestrianDetector
 
 
 def main():
@@ -14,13 +16,16 @@ def main():
     # Set up the drawing window
     screen = pygame.display.set_mode([500, 500])
 
-    scale = 65.0  # pixels per meter
-    motion_model = UnicycleMotion(initial_poses=np.array([[0.0, 0.0, 0.0]]),
-                                  initial_velocities=np.array([[1.0, 10.0]]))
-    sim_dt = 0.04
+    world = World(robot=RobotAgent(Pose(3.0, 3.0, 0.0), Velocity(0.0, 10.0)),
+                  pedestrians=[PedestrianAgent(Pose(7.0, 3.0, 180.0))],
+                  sensors=[PedestrianDetector(max_dist=5.0, fov=30.0)],
+                  sim_dt=0.01)
+
+    resolution = 65.0  # pixels per meter
 
     # Run until the user asks to quit
     running = True
+    # clock = pygame.time.Clock()
     while running:
 
         # Did the user click the window close button?
@@ -33,18 +38,28 @@ def main():
 
         # Draw a solid blue circle in the center
         # pygame.draw.circle(screen, (0, 0, 255), (250, 250), 75)
-        robot_pose = motion_model.poses[0]
-        robot_pose = Pose(int(robot_pose[0] * scale) + 250,
-                          int(robot_pose[1] * scale) + 250,
+        robot_pose = world._sim.robot_pose
+        robot_pose = Pose(robot_pose[0],
+                          robot_pose[1],
                           robot_pose[2])
-        robot = RobotVisual(robot_pose)
+        robot = RobotVisual(robot_pose, resolution)
         screen.blit(robot.surf, robot.rect)
+
+        for ped in world._sim.pedestrians_poses:
+            ped_pose = Pose(ped[0],
+                            ped[1],
+                            ped[2])
+            ped_vis = PedestrianVisual(ped_pose, resolution)
+            screen.blit(ped_vis.surf, ped_vis.rect)
 
         # Flip the display
         pygame.display.flip()
 
-        motion_model.step(sim_dt)
-        time.sleep(sim_dt)
+        world.step()
+        readings = world.get_sensor_readings()["pedestrian_detector"]
+        if len(readings) != 0:
+            print(readings)
+        # clock.tick(30)
 
     # Done! Time to quit.
     pygame.quit()
