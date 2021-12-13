@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Optional
 import time
 from dataclasses import dataclass
 
@@ -23,15 +23,18 @@ class World:
                  robot: RobotAgent,
                  pedestrians: List[PedestrianAgent],
                  sensors: List[AbstractSensor],
-                 sim_dt: float):
+                 sim_dt: float,
+                 rt_factor: Optional[float] = 1.0):
         self._sensors = sensors
         self._sim_dt = sim_dt
+        self._rt_factor = rt_factor
         self._sim = Simulation(robot, pedestrians, sim_dt)
         self._world_state = self._get_world_state()
 
     def step(self):
         self._sim.step()
-        time.sleep(self._sim_dt)
+        if self._rt_factor is not None:
+            time.sleep(self._sim_dt / self._rt_factor)
         self._world_state = self._get_world_state()
 
     @property

@@ -1,22 +1,39 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
+import threading
+import time
 
 import pygame
 
-from pyminisim.core.simulation import WorldState
+from pyminisim.core.simulation import World
 from .agents_visual import RobotVisual, PedestrianVisual
+
+
+class _RendererThread(threading.Thread):
+    def __init__(self, fps: float, rendering_fn: Callable):
+        threading.Thread.__init__(self)
+        self._sleep_time = 1.0 / fps
+        self._rendering_fn = rendering_fn
+
+    def run(self):
+        while True:
+            self._rendering_fn()
+            time.sleep(self._sleep_time)
 
 
 class Renderer:
 
-    def __init__(self, initial_state: WorldState, resolution: float, screen_size: Tuple[int, int] = (500, 500)):
-        self._state = initial_state
+    def __init__(self, world: World, resolution: float, screen_size: Tuple[int, int] = (500, 500), fps: float = 30.0):
+        self._world = world
         self._resolution = resolution
         self._screen_size = screen_size
-        self._robot = RobotVisual(self._resolution)
-        self._pedestrians = [PedestrianVisual(self._resolution) for e in self._state.pedestrian_poses]
+        self._fps = fps
         self._screen = pygame.display.set_mode(self._screen_size)
+        self._robot = RobotVisual(self._resolution)
+        self._pedestrians = [PedestrianVisual(self._resolution) for _ in self._world.world_state.pedestrian_poses]
+        self._thread = None
 
-    def render(self, state: Optional[WorldState]):
+    def render(self):
+        state = self._world.world_state
         if state is not None:
             self._robot.pose = state.robot_pose
             for i, pedestrian in enumerate(self._pedestrians):
@@ -33,3 +50,14 @@ class Renderer:
                                                      int(pose.theta))
             self._screen.blit(surf, rect)
         pygame.display.flip()
+
+    def launch(self):
+        if self._thread is not None:
+            return
+        self._thread = _RendererThread(self._fps, lambda: self.render())
+        self._thread.start()
+
+    def stop(self):
+        if self._thread is None:
+            return
+        self._thread.join()

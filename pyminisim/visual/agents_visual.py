@@ -22,12 +22,6 @@ class AbstractAgentVisual(pygame.sprite.Sprite, ABC):
         self._surf.set_colorkey((255, 255, 255), RLEACCEL)
         self._surf = pygame.transform.scale(self._surf, (45, 45))
 
-    # def _pose_transform(self) -> Tuple[int, int, int]:
-    #     x = int(self._pose.y * self._resolution)
-    #     y = 500 - int(self._pose.x * self._resolution)
-    #     theta = int(wrap_angle(-self._pose.theta + self._angle_offset))
-    #     return x, y, theta
-
     def render(self, x: int, y: int, theta: int):
         rect = self._surf.get_rect(center=(x, y))
         surf = pygame.transform.rotate(self._surf, int(wrap_angle(theta + self._angle_offset)))
