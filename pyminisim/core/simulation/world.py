@@ -46,6 +46,6 @@ class World:
         robot_pose = Pose(self._sim.robot_pose[0], self._sim.robot_pose[1], self._sim.robot_pose[2])
         pedestrian_poses = [Pose(e[0], e[1], e[2]) for e in self._sim.pedestrians_poses]
         collisions = [i for i, e in enumerate(self._sim.pedestrians_poses)
-                      if np.linalg.norm(self._sim.robot_pose - e) < (Simulation.ROBOT_RADIUS +
-                                                                     Simulation.PEDESTRIAN_RADIUS)]
+                      if np.linalg.norm(self._sim.robot_pose[:2] - e[:2]) < (Simulation.ROBOT_RADIUS +
+                                                                             Simulation.PEDESTRIAN_RADIUS)]
         return WorldState(sensor_readings, robot_pose, pedestrian_poses, collisions)

@@ -40,15 +40,24 @@ class Renderer:
                 pedestrian.pose = state.pedestrian_poses[i]
 
         self._screen.fill((255, 255, 255))
-        surf, rect = self._robot.render(int(state.robot_pose.y * self._resolution),
-                                        self._screen_size[1] - int(state.robot_pose.x * self._resolution),
-                                        int(state.robot_pose.theta))
-        self._screen.blit(surf, rect)
+        maker = "collision" if len(state.collisions) != 0 else "normal"
+        self._robot.render(self._screen,
+                           (int(state.robot_pose.y * self._resolution),
+                            self._screen_size[1] - int(state.robot_pose.x * self._resolution),
+                            int(state.robot_pose.theta)),
+                           maker)
         for i, pose in enumerate(state.pedestrian_poses):
-            surf, rect = self._pedestrians[i].render(int(pose.y * self._resolution),
-                                                     self._screen_size[1] - int(pose.x * self._resolution),
-                                                     int(pose.theta))
-            self._screen.blit(surf, rect)
+            maker = "normal"
+            if i in state.collisions:
+                maker = "collision"
+            elif "pedestrian_detector" in state.sensor_readings:
+                if i in state.sensor_readings["pedestrian_detector"]:
+                    maker = "detected"
+            self._pedestrians[i].render(self._screen,
+                                        (int(pose.y * self._resolution),
+                                         self._screen_size[1] - int(pose.x * self._resolution),
+                                         int(pose.theta)),
+                                        maker)
         pygame.display.flip()
 
     def launch(self):
