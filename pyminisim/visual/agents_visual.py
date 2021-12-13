@@ -24,7 +24,7 @@ class AbstractAgentVisual(pygame.sprite.Sprite, ABC):
 
     def render(self, x: int, y: int, theta: int):
         rect = self._surf.get_rect(center=(x, y))
-        surf = pygame.transform.rotate(self._surf, int(wrap_angle(theta + self._angle_offset)))
+        surf = pygame.transform.rotate(self._surf, int(wrap_angle(self._angle_offset - theta)))
         rect = surf.get_rect(center=rect.center)
         return surf, rect
 
