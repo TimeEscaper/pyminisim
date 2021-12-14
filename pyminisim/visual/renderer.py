@@ -4,8 +4,11 @@ import time
 
 import pygame
 
-from pyminisim.core.simulation import World
+from pyminisim.core.common import Pose
+from pyminisim.core.simulation import World, WorldState
 from .agents_visual import RobotVisual, PedestrianVisual
+from .sensors_visual import PedestrianDetectorVisual
+from pyminisim.core.simulation import PedestrianDetector
 
 
 class _RendererThread(threading.Thread):
@@ -28,8 +31,19 @@ class Renderer:
         self._screen_size = screen_size
         self._fps = fps
         self._screen = pygame.display.set_mode(self._screen_size)
+
         self._robot = RobotVisual(self._resolution)
         self._pedestrians = [PedestrianVisual(self._resolution) for _ in self._world.world_state.pedestrian_poses]
+
+        sensor_configs = self._world.sensor_configs
+        if PedestrianDetector.NAME in sensor_configs:
+            config = sensor_configs[PedestrianDetector.NAME]
+            max_dist = config[PedestrianDetector.PARAM_MAX_DIST]
+            fov = config[PedestrianDetector.PARAM_FOV]
+            self._detector = PedestrianDetectorVisual(self._resolution, max_dist, fov)
+        else:
+            self._detector = None
+
         self._thread = None
 
     def render(self):
@@ -40,24 +54,9 @@ class Renderer:
                 pedestrian.pose = state.pedestrian_poses[i]
 
         self._screen.fill((255, 255, 255))
-        maker = "collision" if len(state.collisions) != 0 else "normal"
-        self._robot.render(self._screen,
-                           (int(state.robot_pose.y * self._resolution),
-                            self._screen_size[1] - int(state.robot_pose.x * self._resolution),
-                            int(state.robot_pose.theta)),
-                           maker)
-        for i, pose in enumerate(state.pedestrian_poses):
-            maker = "normal"
-            if i in state.collisions:
-                maker = "collision"
-            elif "pedestrian_detector" in state.sensor_readings:
-                if i in state.sensor_readings["pedestrian_detector"]:
-                    maker = "detected"
-            self._pedestrians[i].render(self._screen,
-                                        (int(pose.y * self._resolution),
-                                         self._screen_size[1] - int(pose.x * self._resolution),
-                                         int(pose.theta)),
-                                        maker)
+        self._render_robot(state)
+        self._render_pedestrians(state)
+        self._render_sensors(state)
         pygame.display.flip()
 
     def launch(self):
@@ -70,3 +69,30 @@ class Renderer:
         if self._thread is None:
             return
         self._thread.join()
+
+    def _transform_pose(self, pose: Pose) -> Tuple[int, int, int]:
+        return (int(pose.y * self._resolution),
+                self._screen_size[1] - int(pose.x * self._resolution),
+                int(pose.theta))
+
+    def _render_robot(self, state: WorldState):
+        maker = "collision" if len(state.collisions) != 0 else "normal"
+        self._robot.render(self._screen,
+                           self._transform_pose(state.robot_pose),
+                           maker)
+
+    def _render_pedestrians(self, state: WorldState):
+        for i, pose in enumerate(state.pedestrian_poses):
+            maker = "normal"
+            if i in state.collisions:
+                maker = "collision"
+            elif PedestrianDetector.NAME in state.sensor_readings:
+                if i in state.sensor_readings[PedestrianDetector.NAME]:
+                    maker = "detected"
+            self._pedestrians[i].render(self._screen,
+                                        self._transform_pose(pose),
+                                        maker)
+
+    def _render_sensors(self, state: WorldState):
+        if self._detector is not None:
+            self._detector.render(self._screen, self._transform_pose(state.robot_pose))

@@ -13,9 +13,9 @@ from pyminisim.core.simulation import World, PedestrianDetector
 def main():
     pygame.init()
 
-    world = World(robot=RobotAgent(Pose(4.0, 3.85, 0.0), Velocity(0.0, 25.0)),
+    world = World(robot=RobotAgent(Pose(2.0, 3.85, 0.0), Velocity(0.0, 25.0)),
                   pedestrians=[PedestrianAgent(Pose(5.0, 3.85, 180.0), Velocity(0.0, 0.0))],
-                  sensors=[PedestrianDetector(max_dist=5.0, fov=30.0)],
+                  sensors=[PedestrianDetector(max_dist=3.0, fov=30.0)],
                   sim_dt=0.01,
                   rt_factor=1.0)
 

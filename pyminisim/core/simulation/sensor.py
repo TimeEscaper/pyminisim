@@ -17,16 +17,29 @@ class AbstractSensor(ABC):
         return self._name
 
     @abstractmethod
+    def get_config(self) -> Dict:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_reading(self, simulation: Simulation) -> Any:
         raise NotImplementedError()
 
 
 class PedestrianDetector(AbstractSensor):
 
+    NAME = "pedestrian_detector"
+
+    PARAM_MAX_DIST = "max_dist"
+    PARAM_FOV = "fov"
+
     def __init__(self, max_dist: float, fov: float):
-        super(PedestrianDetector, self).__init__("pedestrian_detector")
+        super(PedestrianDetector, self).__init__(PedestrianDetector.NAME)
         self._max_dist = max_dist
         self._fov = fov
+
+    def get_config(self) -> Dict:
+        return {PedestrianDetector.PARAM_MAX_DIST: self._max_dist,
+                PedestrianDetector.PARAM_FOV: self._fov}
 
     def get_reading(self, simulation: Simulation) -> Dict:
         robot_pose = simulation.robot_pose

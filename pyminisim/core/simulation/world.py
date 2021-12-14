@@ -41,6 +41,10 @@ class World:
     def world_state(self) -> WorldState:
         return self._world_state
 
+    @property
+    def sensor_configs(self) -> Dict:
+        return {sensor.name: sensor.get_config() for sensor in self._sensors}
+
     def _get_world_state(self) -> WorldState:
         sensor_readings = {sensor.name: sensor.get_reading(self._sim) for sensor in self._sensors}
         robot_pose = Pose(self._sim.robot_pose[0], self._sim.robot_pose[1], self._sim.robot_pose[2])
