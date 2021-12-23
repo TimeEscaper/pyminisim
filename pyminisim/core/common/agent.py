@@ -1,4 +1,5 @@
 from abc import ABC
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -42,3 +43,12 @@ class RobotAgent(AbstractAgent):
                  initial_pose: Pose,
                  initial_velocity: Velocity = Velocity(0.0, 0.0)):
         super(RobotAgent, self).__init__(initial_pose, initial_velocity)
+
+
+@dataclass
+class PedestrianForceAgent:
+    agent_id: int
+    desired_linear_vel: np.ndarray
+    radius: float
+    mass: float
+    inertia: float
