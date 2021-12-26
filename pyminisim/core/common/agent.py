@@ -48,7 +48,15 @@ class RobotAgent(AbstractAgent):
 @dataclass
 class PedestrianForceAgent:
     agent_id: int
-    desired_linear_vel: np.ndarray
+    linear_vel_magnitude: float
     radius: float
     mass: float
     inertia: float
+
+    @staticmethod
+    def create_default(agent_id: int):
+        return PedestrianForceAgent(agent_id=agent_id,
+                                    linear_vel_magnitude=1.5,
+                                    radius=0.3,
+                                    mass=70.0,
+                                    inertia=0.5 * 0.3 ** 2)  # 0.5 * r ** 2

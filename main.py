@@ -20,11 +20,12 @@ def main():
                   rt_factor=1.0)
 
     renderer = Renderer(world, resolution=80.0)
-    renderer.launch()
+    # renderer.launch()
 
     running = True
     # clock = pygame.time.Clock()
     while running:
+        renderer.render()
 
         # Did the user click the window close button?
         for event in pygame.event.get():
