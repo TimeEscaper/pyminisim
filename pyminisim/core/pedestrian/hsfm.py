@@ -75,6 +75,7 @@ class HeadedSocialForceModel:
         self._b = np.stack([np.zeros((self._n_pedestrians,)), 1. / self._I], axis=1)
 
     def update(self, dt: float, robot_position: np.ndarray, robot_linear_vel: np.ndarray) -> np.ndarray:
+        self._v_d = self._calc_desired_velocities(self._waypoint_tracker.current_waypoints, self._r)
         solver = ode(lambda t, rp, rv: self._hsfm_ode(t, rp, rv)).set_integrator("dopri5")  # lambda t, rp, rv: self._hsfm_ode(t, rp, rv)
         X0 = np.concatenate([self._r,
                              HeadedSocialForceModel._matvec(np.linalg.inv(self._R), self._v),
@@ -90,6 +91,7 @@ class HeadedSocialForceModel:
         self._R = np.array([[[np.cos(theta), -np.sin(theta)],
                              [np.sin(theta), np.cos(theta)]] for theta in self._q[:, 0]])
         self._v = HeadedSocialForceModel._matvec(self._R, X[:, 2:4])
+        self._v_d = self._calc_desired_velocities(self._waypoint_tracker.current_waypoints, self._r)
 
         return np.concatenate([self._r, self._q[:, 0, np.newaxis]], axis=1)
 

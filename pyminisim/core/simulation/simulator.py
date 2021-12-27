@@ -22,12 +22,13 @@ class Simulation:
         self._dt = dt
         self._pedestrians_poses = np.array([ped.pose.to_array() for ped in pedestrians])
         self._pedestrians_poses[:, 2] = np.deg2rad(self._pedestrians_poses[:, 2])  # TODO: Fix globally in project
+        self._waypoint_tracker = WaypointTracker((7., 7.))
         self._hsfm = HeadedSocialForceModel(DEFAULT_HSFM_PARAMS,
                                             pedestrians=[PedestrianForceAgent.create_default(i)
                                                          for i in range(len(pedestrians))],
                                             initial_poses=self._pedestrians_poses.copy(),
                                             robot_radius=Simulation.ROBOT_RADIUS,
-                                            waypoint_tracker=WaypointTracker((7., 7.)))
+                                            waypoint_tracker=self._waypoint_tracker)
 
     @property
     def pedestrians_poses(self) -> np.ndarray:
@@ -47,4 +48,5 @@ class Simulation:
         self._pedestrians_poses = self._hsfm.update(self._dt,
                                                     self._robot_motion.poses[0][:2],
                                                     robot_vel)
+        self._waypoint_tracker.update_waypoints(self._pedestrians_poses[:, :2])
         self._robot_motion.step(self._dt)

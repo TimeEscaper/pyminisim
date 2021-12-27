@@ -30,7 +30,7 @@ class WaypointTracker:
             raise RuntimeError("Waypoints are not initialized")
         assert agents_positions.shape == self._waypoints.shape
         self._waypoints = np.stack([
-            self._sample_single_waypoint(position) if not self._waypoint_reached(waypoint, position) else waypoint
+            self._sample_single_waypoint(position) if self._waypoint_reached(waypoint, position) else waypoint
             for waypoint, position in zip(self._waypoints, agents_positions)])
         return self._waypoints.copy()
 
@@ -40,7 +40,6 @@ class WaypointTracker:
                                               high=np.array([self._world_size[0], self._world_size[1]]))
             if np.linalg.norm(agent_position - sampled_point) < self._min_sample_distance:
                 continue
-            print("Sampled point: ", sampled_point)
             return sampled_point
         raise RuntimeError("Failed to sample waypoint")
 
