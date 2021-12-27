@@ -32,6 +32,10 @@ DEFAULT_HSFM_PARAMS = HSFMParams(tau=0.5,
                                  alpha=3.)
 
 
+def hsfm_ode(t: float, robot_position: np.ndarray, robot_linear_vel: np.ndarray) -> np.ndarray:
+    return np.zeros((1, 6)).flatten()
+
+
 class HeadedSocialForceModel:
 
     def __init__(self,
@@ -55,10 +59,10 @@ class HeadedSocialForceModel:
         # Current positions
         self._r = initial_poses[:, :2].copy()
         # Current orientations and angular velocities
-        self._q = np.concatenate([initial_poses[:, 3], np.zeros((self._n_pedestrians, 2))], axis=1)
+        self._q = np.stack([initial_poses[:, 2], np.zeros((self._n_pedestrians,))], axis=1)
         # Current rotation matrix
         self._R = np.array([[[np.cos(theta), -np.sin(theta)],
-                             [np.sin(theta), np.cos(theta)]] for theta in initial_poses[:, 3]])
+                             [np.sin(theta), np.cos(theta)]] for theta in initial_poses[:, 2]])
         # Desired velocities v_d
         self._v_d = self._calc_desired_velocities(self._waypoint_tracker.current_waypoints, self._r)
         # Current velocities v
@@ -67,25 +71,27 @@ class HeadedSocialForceModel:
         self._m = np.array([e.mass for e in pedestrians])
         self._I = np.array([e.inertia for e in pedestrians])
         # A matrix and b vector
-        self._A = np.repeat(np.array([[0., 1.], [0., 0.]]), len(pedestrians), axis=0)
-        self._b = np.concatenate([np.zeros((len(pedestrians),)), 1. / self._I], axis=1)
+        self._A = np.array([[[0., 1.], [0., 0.]] for _ in range(self._n_pedestrians)])
+        self._b = np.stack([np.zeros((self._n_pedestrians,)), 1. / self._I], axis=1)
 
     def update(self, dt: float, robot_position: np.ndarray, robot_linear_vel: np.ndarray) -> np.ndarray:
-        solver = ode(lambda t, rp, rv: self._hsfm_ode(t, rp, rv)).set_integrator("dopri5")
-        X0 = np.concatenate([self._r, np.linalg.inv(self._R) @ self._v, self._q])
+        solver = ode(lambda t, rp, rv: self._hsfm_ode(t, rp, rv)).set_integrator("dopri5")  # lambda t, rp, rv: self._hsfm_ode(t, rp, rv)
+        X0 = np.concatenate([self._r,
+                             HeadedSocialForceModel._matvec(np.linalg.inv(self._R), self._v),
+                             self._q], axis=1).flatten()
         solver.set_initial_value(X0, 0.)
         solver.set_f_params(robot_position, robot_linear_vel)
 
         solver.integrate(dt)
-        X = solver.y
+        X = solver.y.reshape((self._n_pedestrians, 6))
 
         self._r = X[:, :2]
-        self._q = X[:, 5:]
+        self._q = X[:, 4:]
         self._R = np.array([[[np.cos(theta), -np.sin(theta)],
                              [np.sin(theta), np.cos(theta)]] for theta in self._q[:, 0]])
-        self._v = self._R @ X[:, 3:5]
+        self._v = HeadedSocialForceModel._matvec(self._R, X[:, 2:4])
 
-        return np.concatenate([self._r, self._q[:, 0]], axis=1)
+        return np.concatenate([self._r, self._q[:, 0, np.newaxis]], axis=1)
 
     def _hsfm_ode(self, t: float, robot_position: np.ndarray, robot_linear_vel: np.ndarray) -> np.ndarray:
         f_0 = self._m * (self._v_d - self._v) / self._params.tau
@@ -104,25 +110,25 @@ class HeadedSocialForceModel:
 
         r_f = self._R[:, :, 0]
         r_o = self._R[:, :, 1]
-        v_b = np.linalg.inv(self._R) @ self._v
+        v_b = HeadedSocialForceModel._matvec(np.linalg.inv(self._R), self._v)
         v_o = v_b[:, 1]
 
-        u_f = (f_0 + f_e) @ r_f
-        u_o = self._params.k_o * (f_e @ r_o) - self._params.k_d * v_o
+        u_f = HeadedSocialForceModel._dot((f_0 + f_e), r_f)
+        u_o = self._params.k_o * (HeadedSocialForceModel._dot(f_e ,r_o)) - self._params.k_d * v_o
         u_b = np.stack([u_f, u_o], axis=1)
 
         k_lambda_f_0 = self._params.k_lambda * np.linalg.norm(f_0, axis=1)
         k_theta = self._I * k_lambda_f_0
         k_omega = self._I * (1. + self._params.alpha) * np.sqrt(k_lambda_f_0 / self._params.alpha)
-        theta_0 = np.mod(np.arctan2(self._v_d[1], self._v_d[0]), 2 * np.pi)
+        theta_0 = np.mod(np.arctan2(self._v_d[:, 1], self._v_d[:, 0]), 2 * np.pi)
 
         u_theta = -k_theta * np.unwrap(self._q[:, 0] - theta_0) - k_omega * self._q[:, 1]
 
         dr = self._v  # Equal to the R(theta) * v_b from formulas
         dv_b = 1. / self._m * u_b
-        dq = self._A @ self._q + self._b * u_theta
+        dq = HeadedSocialForceModel._matvec(self._A, self._q) + self._b * u_theta
 
-        return np.concatenate([dr, dv_b, dq], axis=1)
+        return np.concatenate([dr, dv_b, dq], axis=1).flatten()
 
     def _calc_f_p_ij(self,
                      radius_i: float,
@@ -149,3 +155,11 @@ class HeadedSocialForceModel:
         direction = current_waypoints - current_positions
         direction = direction / np.linalg.norm(direction)
         return self._linear_vel_magnitudes * direction
+
+    @staticmethod
+    def _matvec(matrix: np.ndarray, vector: np.ndarray) -> np.ndarray:
+        return np.einsum("ijk,ik->ij", matrix, vector)
+
+    @staticmethod
+    def _dot(vector1: np.ndarray, vector2: np.ndarray) -> np.ndarray:
+        return np.einsum("ij,ij->i", vector1, vector2)

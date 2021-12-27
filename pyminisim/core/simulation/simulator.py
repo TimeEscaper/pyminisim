@@ -21,6 +21,7 @@ class Simulation:
         self._robot_motion = UnicycleMotion(robot_pose[np.newaxis, :], robot_vel[np.newaxis, :])
         self._dt = dt
         self._pedestrians_poses = np.array([ped.pose.to_array() for ped in pedestrians])
+        self._pedestrians_poses[:, 2] = np.deg2rad(self._pedestrians_poses[:, 2])  # TODO: Fix globally in project
         self._hsfm = HeadedSocialForceModel(DEFAULT_HSFM_PARAMS,
                                             pedestrians=[PedestrianForceAgent.create_default(i)
                                                          for i in range(len(pedestrians))],
@@ -30,14 +31,20 @@ class Simulation:
 
     @property
     def pedestrians_poses(self) -> np.ndarray:
-        return self._pedestrians_poses.copy()
+        poses = self._pedestrians_poses.copy()
+        poses[:, 2] = np.rad2deg(poses[:, 2])
+        return poses
 
     @property
     def robot_pose(self) -> np.ndarray:
         return self._robot_motion.poses[0]
 
     def step(self):
+        robot_vel = self._robot_motion.velocities[0].copy()
+        orientation = self._robot_motion.poses[0][2]
+        robot_vel = np.array([robot_vel[0] * np.cos(np.deg2rad(orientation)),
+                              robot_vel[0] * np.sin(np.deg2rad(orientation))])
         self._pedestrians_poses = self._hsfm.update(self._dt,
-                                                    self._robot_motion.poses[0],
-                                                    self._robot_motion.velocities[0])
+                                                    self._robot_motion.poses[0][:2],
+                                                    robot_vel)
         self._robot_motion.step(self._dt)
