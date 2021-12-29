@@ -1,8 +1,17 @@
+"""
+The Headed Social Force Model (HSFM) implementation.
+Based on paper "Walking Ahead: The Headed Social Force Model" by Farina et al.
+
+For increasing computational efficiency, the Numba package is used.
+Due to requirements of Numba, some vectorized operations are implemented using standard cycles.
+"""
+
+
+
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Tuple
 
 import numpy as np
-from scipy.integrate import ode
 from numba import njit
 
 from pyminisim.core.common import PedestrianForceAgent
@@ -34,8 +43,7 @@ DEFAULT_HSFM_PARAMS = HSFMParams(tau=0.5,
 
 
 @njit
-def _hsfm_ode(t: float,
-              m: np.ndarray,
+def _hsfm_ode(m: np.ndarray,
               I: np.ndarray,
               v: np.ndarray,
               v_d: np.ndarray,
@@ -54,7 +62,7 @@ def _hsfm_ode(t: float,
               k_o: float,
               k_d: float,
               k_lambda: float,
-              alpha: float) -> np.ndarray:
+              alpha: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     n_pedestrians = m.shape[0]
 
     # f_0 = m[:, np.newaxis] * (v_d - v) / tau  Omitted due to Numba requirements
@@ -97,7 +105,8 @@ def _hsfm_ode(t: float,
         dv_b[i] = 1. / m[i] * u_b[i]
     dq = np.stack((q[:, 1], u_theta / I), axis=1)  # Equal to the A * dq + b * u_theta from formulas
 
-    return np.concatenate((dr, dv_b, dq), axis=1).flatten()
+    # return np.concatenate((dr, dv_b, dq), axis=1).flatten()
+    return dr, dv_b, dq
 
 
 @njit
@@ -189,7 +198,6 @@ class HeadedSocialForceModel:
                  # initial_angular_vels: np.ndarray,
                  robot_radius: float,
                  waypoint_tracker: WaypointTracker):
-
         self._params = params
         self._n_pedestrians = len(pedestrians)
         self._linear_vel_magnitudes = np.array([e.linear_vel_magnitude for e in pedestrians])
@@ -208,7 +216,7 @@ class HeadedSocialForceModel:
                              [np.sin(theta), np.cos(theta)]] for theta in initial_poses[:, 2]])
         # Desired velocities v_d
         self._v_d = _calc_desired_velocities(self._waypoint_tracker.current_waypoints, self._r,
-                                                  self._linear_vel_magnitudes)
+                                             self._linear_vel_magnitudes)
         # Current velocities v
         self._v = np.zeros((self._n_pedestrians, 2))
         # Masses and inertia
@@ -217,34 +225,22 @@ class HeadedSocialForceModel:
 
     def update(self, dt: float, robot_position: np.ndarray, robot_linear_vel: np.ndarray) -> np.ndarray:
         self._v_d = _calc_desired_velocities(self._waypoint_tracker.current_waypoints, self._r,
-                                                  self._linear_vel_magnitudes)
-        # solver = ode(HeadedSocialForceModel._hsfm_ode).set_integrator("dopri5")  # lambda t, rp, rv: self._hsfm_ode(t, rp, rv)
-        X0 = np.concatenate([self._r,
-                             _matvec(_inverse(self._R), self._v),
-                             self._q], axis=1)
-        # solver.set_initial_value(X0, 0.)
-        # solver.set_f_params(self._params, self._m, self._I, self._v, self._v_d, self._r, self._radii,
-        #                     self._R, self._q,
-        #                     self._A, self._b, self._robot_radius, robot_position, robot_linear_vel)
-        #
-        # solver.integrate(dt)
-        # X = solver.y.reshape((self._n_pedestrians, 6))
-        dX = _hsfm_ode(dt, self._m, self._I, self._v, self._v_d, self._r,
-                                              self._radii, self._R, self._q, self._robot_radius,
-                                              robot_position, robot_linear_vel,
-                                              **self._params.__dict__).reshape((self._n_pedestrians, 6))
-        self._r = X0[:, :2] + dX[:, :2] * dt
-        self._q = X0[:, 4:] + dX[:, 4:] * dt
+                                             self._linear_vel_magnitudes)
+
+        # Here we do not use "fair" integrators (e.g. scipy.integrate.ode), as it was in original paper's code
+        # in sake of better computational performance and Numba compatibility.
+        dr, dv_b, dq = _hsfm_ode(self._m, self._I, self._v, self._v_d, self._r,
+                                 self._radii, self._R, self._q, self._robot_radius,
+                                 robot_position, robot_linear_vel,
+                                 **self._params.__dict__)
+
+        self._r = self._r + dr * dt
+        self._q = self._q + dq * dt
         self._R = np.array([[[np.cos(theta), -np.sin(theta)],
                              [np.sin(theta), np.cos(theta)]] for theta in self._q[:, 0]])
-        self._v = _matvec(self._R, X0[:, 2:4] + dX[:, 2:4] * dt)
+        self._v = self._v + _matvec(self._R, dv_b * dt)
 
-        # self._r = X[:, :2]
-        # self._q = X[:, 4:]
-        # self._R = np.array([[[np.cos(theta), -np.sin(theta)],
-        #                      [np.sin(theta), np.cos(theta)]] for theta in self._q[:, 0]])
-        # self._v = HeadedSocialForceModel._matvec(self._R, X[:, 2:4])
         self._v_d = _calc_desired_velocities(self._waypoint_tracker.current_waypoints, self._r,
-                                                  self._linear_vel_magnitudes)
+                                             self._linear_vel_magnitudes)
 
         return np.concatenate([self._r, self._q[:, 0, np.newaxis]], axis=1)

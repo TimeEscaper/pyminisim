@@ -1,22 +1,20 @@
 import time
 
-import numpy as np
 import pygame
 
-from pyminisim.visual import Renderer
 from pyminisim.core.common import Pose, Velocity
-from pyminisim.core.motion import UnicycleMotion
 from pyminisim.core.common import RobotAgent, PedestrianAgent
 from pyminisim.core.simulation import World, PedestrianDetector
+from pyminisim.visual import Renderer
 
 
 def main():
     pygame.init()
 
     step = 5.0
-    pedestrians = [PedestrianAgent(Pose(i * step, 3.85, 180.0), Velocity(0.0, 0.0)) for i in range(100)]
+    # pedestrians = [PedestrianAgent(Pose(i * step, 3.85, 180.0), Velocity(0.0, 0.0)) for i in range(100)]
     world = World(robot=RobotAgent(Pose(2.0, 3.85, 0.0), Velocity(0.0, 25.0)),
-                  pedestrians=pedestrians,
+                  pedestrians=[PedestrianAgent(Pose(5.0, 3.85, 180.0), Velocity(0.0, 0.0))],
                   sensors=[PedestrianDetector(max_dist=3.0, fov=30.0)],
                   sim_dt=0.01,
                   rt_factor=1.0)

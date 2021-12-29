@@ -32,9 +32,15 @@ class World:
         self._world_state = self._get_world_state()
 
     def step(self):
+        time_start = time.time()
         self._sim.step()
+        time_end = time.time()
+        time_elapsed = time_end - time_start
         if self._rt_factor is not None:
-            time.sleep(self._sim_dt / self._rt_factor)
+            time_to_sleep = self._sim_dt / self._rt_factor - time_elapsed
+            if time_to_sleep > 0.:
+                # TODO: Log think on logging RT factor info
+                time.sleep(self._sim_dt / self._rt_factor)
         self._world_state = self._get_world_state()
 
     @property
