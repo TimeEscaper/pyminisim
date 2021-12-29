@@ -1,3 +1,4 @@
 pygame==2.1.0
 numpy
 pillow
+numba==0.54.1

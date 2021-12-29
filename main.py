@@ -13,8 +13,10 @@ from pyminisim.core.simulation import World, PedestrianDetector
 def main():
     pygame.init()
 
+    step = 5.0
+    pedestrians = [PedestrianAgent(Pose(i * step, 3.85, 180.0), Velocity(0.0, 0.0)) for i in range(100)]
     world = World(robot=RobotAgent(Pose(2.0, 3.85, 0.0), Velocity(0.0, 25.0)),
-                  pedestrians=[PedestrianAgent(Pose(5.0, 3.85, 180.0), Velocity(0.0, 0.0))],
+                  pedestrians=pedestrians,
                   sensors=[PedestrianDetector(max_dist=3.0, fov=30.0)],
                   sim_dt=0.01,
                   rt_factor=1.0)
@@ -24,8 +26,13 @@ def main():
 
     running = True
     # clock = pygame.time.Clock()
+    world.step()
+    start_time = time.time()
+    end_time = time.time()
+    n_frames = 0
     while running:
         renderer.render()
+        n_frames += 1
 
         # Did the user click the window close button?
         for event in pygame.event.get():
@@ -33,6 +40,11 @@ def main():
                 running = False
 
         world.step()
+        current_time = time.time()
+        if current_time - start_time >= 20.0:
+            end_time = current_time
+            break
+    print("FPS: ", n_frames / (end_time - start_time))
 
     # Done! Time to quit.
     pygame.quit()
