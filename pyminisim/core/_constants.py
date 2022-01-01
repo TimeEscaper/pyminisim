@@ -1,0 +1,2 @@
+ROBOT_RADIUS: float = 0.35
+PEDESTRIAN_RADIUS: float = 0.3
