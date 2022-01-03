@@ -239,5 +239,5 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
                        [np.sin(theta), np.cos(theta)]] for theta in q[:, 0]])
         v = v + _matvec(R, dv_b * dt)
 
-        self._poses = np.concatenate([r, q[:, 0, np.newaxis]])
-        self._velocities = np.concatenate([v, q[:, 1, np.newaxis]])
+        self._poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
+        self._velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)

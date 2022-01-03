@@ -1,7 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Dict
 
-from pyminisim.core import SimulationState
+from ._world_state import WorldState
+
+
+class AbstractSensorConfig(ABC):
+    pass
+
+
+class AbstractSensorReading(ABC):
+    pass
 
 
 class AbstractSensor(ABC):
@@ -13,6 +20,11 @@ class AbstractSensor(ABC):
     def sensor_name(self) -> str:
         return self._name
 
+    @property
     @abstractmethod
-    def get_reading(self, simulation_state: SimulationState) -> Dict:
+    def sensor_config(self) -> AbstractSensorConfig:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_reading(self, world_state: WorldState) -> AbstractSensorReading:
         raise NotImplementedError()
