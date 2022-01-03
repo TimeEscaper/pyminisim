@@ -1,3 +1,8 @@
+import sys
+
+sys.path.append('..')
+
+
 import time
 from typing import Tuple
 
@@ -34,18 +39,13 @@ def main():
     renderer.initialize()
 
     running = True
-    sim.step()
+    sim.step()  # First step can take some time due to Numba compilation
     start_time = time.time()
     end_time = time.time()
     n_frames = 0
     while running:
         renderer.render()
         n_frames += 1
-
-        # Did the user click the window close button?
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
 
         sim.step()
         current_time = time.time()

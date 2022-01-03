@@ -31,7 +31,7 @@ class HSFMParams:
 
     @staticmethod
     def create_default():
-        return HSFMParams(tau=0.5,
+        return HSFMParams(tau=0.2,
                           A=2000,
                           B=0.08,
                           k_1=1.2 * 10 ** 5,
