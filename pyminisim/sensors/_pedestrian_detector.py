@@ -1,8 +1,18 @@
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
+from typing import Dict, Tuple, Optional
 
 import numpy as np
 
 from pyminisim.core import AbstractSensorConfig, AbstractSensorReading, AbstractSensor, WorldState
+
+
+@dataclass
+class PedestrianDetectorNoise:
+    distance_mu: float
+    distance_sigma: float
+    angle_mu: float
+    angle_sigma: float
+    misdetection_prob: float
 
 
 class PedestrianDetectorConfig(AbstractSensorConfig):
@@ -33,14 +43,17 @@ class PedestrianDetectorReading(AbstractSensorReading):
 
 
 class PedestrianDetector(AbstractSensor):
-
     NAME = "pedestrian_detector"
 
     def __init__(self,
                  config: PedestrianDetectorConfig = PedestrianDetectorConfig(max_dist=3.,
-                                                                             fov=np.deg2rad(30.))):
+                                                                             fov=np.deg2rad(30.)),
+                 noise: Optional[PedestrianDetectorNoise] = None):
+        if noise is not None:
+            assert noise.misdetection_prob <= 1.
         super(PedestrianDetector, self).__init__(PedestrianDetector.NAME)
         self._config = config
+        self._noise = noise
 
     @property
     def sensor_config(self) -> AbstractSensorConfig:
@@ -59,6 +72,19 @@ class PedestrianDetector(AbstractSensor):
             angle_diff = (point_angle - robot_pose[2] + np.pi) % (2 * np.pi) - np.pi
             if abs(angle_diff) > self._config.fov / 2.0:
                 continue
-            readings[i] = (distance, angle_diff)
+
+            reading = self._noisify_reading(distance, angle_diff)
+            if reading is None:
+                continue
+            readings[i] = reading[0], reading[1]
 
         return PedestrianDetectorReading(readings)
+
+    def _noisify_reading(self, distance: float, angle_diff: float) -> Optional[Tuple[float, float]]:
+        if self._noise is None:
+            return distance, angle_diff
+        if not bool(np.random.binomial(1, 1. - self._noise.misdetection_prob)):
+            return None
+        distance = distance + np.random.normal(self._noise.distance_mu, self._noise.distance_sigma)
+        angle_diff = angle_diff + np.random.normal(self._noise.angle_mu, self._noise.angle_sigma)
+        return distance, angle_diff

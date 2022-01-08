@@ -12,7 +12,7 @@ import pygame
 from pyminisim.core import Simulation
 from pyminisim.robot import UnicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
-from pyminisim.sensors import PedestrianDetector
+from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector
 from pyminisim.visual import Renderer
 
 
@@ -23,7 +23,12 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     pedestrians_model = HeadedSocialForceModelPolicy(initial_poses=np.array([[5.0, 3.85, np.pi],
                                                                              [1.0, 1.85, -np.pi]]),
                                                      waypoint_tracker=tracker)
-    sensors = [PedestrianDetector()]
+    # You can model sensor's noise
+    # sensor_noise = PedestrianDetectorNoise(distance_mu=0., distance_sigma=0.2,
+    #                                        angle_mu=0., angle_sigma=0.05,
+    #                                        misdetection_prob=0.1)
+    sensor_noise = None
+    sensors = [PedestrianDetector(noise=sensor_noise)]
     sim = Simulation(robot_model=robot_model,
                      pedestrians_model=pedestrians_model,
                      waypoint_tracker=tracker,

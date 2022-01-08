@@ -1,1 +1,2 @@
-from ._pedestrian_detector import PedestrianDetectorConfig, PedestrianDetectorReading, PedestrianDetector
+from ._pedestrian_detector import PedestrianDetectorNoise, PedestrianDetectorConfig, PedestrianDetectorReading, \
+    PedestrianDetector
