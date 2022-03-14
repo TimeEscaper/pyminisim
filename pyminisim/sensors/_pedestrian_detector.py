@@ -60,6 +60,9 @@ class PedestrianDetector(AbstractSensor):
         return self._config
 
     def get_reading(self, world_state: WorldState) -> AbstractSensorReading:
+        if world_state.pedestrians_poses is None or world_state.robot_pose is None:
+            return PedestrianDetectorReading({})
+
         robot_pose = world_state.robot_pose
         ped_poses = world_state.pedestrians_poses
         readings = {}

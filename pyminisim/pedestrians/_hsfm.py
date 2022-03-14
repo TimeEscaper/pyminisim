@@ -52,8 +52,8 @@ def _hsfm_ode(m: np.ndarray,
               R: np.ndarray,
               q: np.ndarray,
               robot_radius: float,
-              robot_position: np.ndarray,
-              robot_linear_vel: np.ndarray,
+              robot_position: Optional[np.ndarray],
+              robot_linear_vel: Optional[np.ndarray],
               tau: float,
               A: float,
               B: float,
@@ -77,8 +77,9 @@ def _hsfm_ode(m: np.ndarray,
                 continue
             f_p[i, :] += _calc_f_p_ij(radii[i], radii[j], r[i], r[j], v[i], v[j],
                                       A, B, k_1, k_2)
-        f_p[i, :] += _calc_f_p_ij(radii[i], robot_radius, r[i], robot_position,
-                                  v[i], robot_linear_vel, A, B, k_1, k_2)
+        if robot_position is not None:
+            f_p[i, :] += _calc_f_p_ij(radii[i], robot_radius, r[i], robot_position,
+                                      v[i], robot_linear_vel, A, B, k_1, k_2)
 
     f_e = f_p  # Ignore f_w for now
 
@@ -199,12 +200,11 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
                  pedestrian_linear_velocity_magnitude: float = 1.5):
         if initial_velocities is None:
             initial_velocities = np.zeros((initial_poses.shape[0], 3))
-        super(HeadedSocialForceModelPolicy, self).__init__(initial_poses, initial_velocities)
+        super(HeadedSocialForceModelPolicy, self).__init__(initial_poses, initial_velocities, waypoint_tracker)
 
         self._params = hsfm_params
         self._n_pedestrians = initial_poses.shape[0]
         self._linear_vel_magnitudes = np.repeat(pedestrian_linear_velocity_magnitude, self._n_pedestrians)
-        self._waypoint_tracker = waypoint_tracker
         if self._waypoint_tracker.current_waypoints is None:
             self._waypoint_tracker.sample_waypoints(initial_poses)
 
@@ -214,7 +214,12 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
         self._m = np.repeat(pedestrian_mass, self._n_pedestrians)
         self._I = 0.5 * (self._radii ** 2)
 
-    def step(self, dt: float, robot_pose: np.ndarray, robot_velocity: np.ndarray):
+    def step(self, dt: float, robot_pose: Optional[np.ndarray], robot_velocity: Optional[np.ndarray]):
+        if robot_pose is None:
+            assert robot_velocity is None
+        elif robot_velocity is None:
+            assert robot_pose is None
+
         # Current positions
         r = self._poses[:, :2]
         # Current orientations and angular velocities
@@ -229,8 +234,11 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
 
         # Here we do not use "fair" integrators (e.g. scipy.integrate.ode), as it was in original paper's code
         # in sake of better computational performance and Numba compatibility.
+        if robot_pose is not None:
+            robot_pose = robot_pose[:2]
+            robot_velocity = robot_velocity[:2]
         dr, dv_b, dq = _hsfm_ode(self._m, self._I, v, v_d, r, self._radii, R, q, self._robot_radius,
-                                 robot_pose[:2], robot_velocity[:2],
+                                 robot_pose, robot_velocity,
                                  **self._params.__dict__)
 
         r = r + dr * dt
@@ -241,3 +249,5 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
 
         self._poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
         self._velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)
+
+        self._waypoint_tracker.update_waypoints(self._poses)

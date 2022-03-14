@@ -18,20 +18,17 @@ from ._constants import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 class Simulation:
 
     def __init__(self,
-                 robot_model: AbstractRobotMotionModel,
-                 pedestrians_model: AbstractPedestriansPolicy,
-                 waypoint_tracker: AbstractWaypointTracker,
+                 robot_model: Optional[AbstractRobotMotionModel],
+                 pedestrians_model: Optional[AbstractPedestriansPolicy],
                  sensors: List[AbstractSensor],
                  sim_dt: float = 0.01,
                  rt_factor: Optional[float] = 1.0):
         self._robot_model = robot_model
         self._pedestrians_model = pedestrians_model
-        self._waypoint_tracker = waypoint_tracker
         self._sensors = sensors
         self._sim_dt = sim_dt
         self._rt_factor = rt_factor
 
-        self._waypoint_tracker.update_waypoints(self._pedestrians_model.poses)
         self._current_state = self._get_simulation_state()
 
     @property
@@ -43,7 +40,8 @@ class Simulation:
         return self._sensors
 
     def set_control(self, control: np.ndarray):
-        self._robot_model.control = control
+        if self._robot_model is not None:
+            self._robot_model.control = control
 
     def step(self) -> SimulationState:
         time_start = time.time()
@@ -61,9 +59,16 @@ class Simulation:
         return self._current_state
 
     def _make_steps(self):
-        self._robot_model.step(self._sim_dt)
-        self._pedestrians_model.step(self._sim_dt, self._robot_model.pose, self._robot_model.velocity)
-        self._waypoint_tracker.update_waypoints(self._pedestrians_model.poses)
+        if self._robot_model is not None:
+            self._robot_model.step(self._sim_dt)
+            robot_pose = self._robot_model.pose
+            robot_velocity = self._robot_model.velocity
+        else:
+            robot_pose = None
+            robot_velocity = None
+
+        if self._pedestrians_model is not None:
+            self._pedestrians_model.step(self._sim_dt, robot_pose, robot_velocity)
 
     def _get_simulation_state(self) -> SimulationState:
         world_state = self._get_world_state()
@@ -71,14 +76,38 @@ class Simulation:
         return SimulationState(world=world_state, sensors=sensors_readings)
 
     def _get_world_state(self) -> WorldState:
-        collisions = [i for i, e in enumerate(self._pedestrians_model.poses)
-                      if np.linalg.norm(self._robot_model.pose[:2] - e[:2]) < (ROBOT_RADIUS + PEDESTRIAN_RADIUS)]
-        return WorldState(robot_pose=self._robot_model.pose,
-                          robot_velocity=self._robot_model.velocity,
-                          pedestrians_poses=self._pedestrians_model.poses,
-                          pedestrians_velocities=self._pedestrians_model.velocities,
-                          last_control=self._robot_model.control,
+        if self._robot_model is not None:
+            if self._pedestrians_model is not None:
+                collisions = [i for i, e in enumerate(self._pedestrians_model.poses)
+                              if np.linalg.norm(self._robot_model.pose[:2] - e[:2])
+                              < (ROBOT_RADIUS + PEDESTRIAN_RADIUS)]
+            else:
+                collisions = None
+            robot_pose = self._robot_model.pose
+            robot_velocity = self._robot_model.velocity
+            last_control = self._robot_model.control
+        else:
+            collisions = None
+            robot_pose = None
+            robot_velocity = None
+            last_control = None
+
+        if self._pedestrians_model is not None:
+            pedestrians_poses = self._pedestrians_model.poses
+            pedestrians_velocities = self._pedestrians_model.velocities
+        else:
+            pedestrians_poses = None
+            pedestrians_velocities = None
+
+        return WorldState(robot_pose=robot_pose,
+                          robot_velocity=robot_velocity,
+                          pedestrians_poses=pedestrians_poses,
+                          pedestrians_velocities=pedestrians_velocities,
+                          last_control=last_control,
                           robot_to_pedestrians_collisions=collisions)
 
     def _get_sensors_readings(self, world_state: WorldState) -> Dict:
-        return {sensor.sensor_name: sensor.get_reading(world_state) for sensor in self._sensors}
+        if self._robot_model is not None:
+            return {sensor.sensor_name: sensor.get_reading(world_state) for sensor in self._sensors}
+        else:
+            return {}

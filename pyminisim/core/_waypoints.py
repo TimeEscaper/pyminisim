@@ -18,3 +18,7 @@ class AbstractWaypointTracker(ABC):
     @abstractmethod
     def update_waypoints(self, agents_poses: np.ndarray) -> np.ndarray:
         raise NotImplementedError()
+
+    @abstractmethod
+    def set_waypoints(self, waypoints: np.ndarray):
+        raise NotImplementedError()

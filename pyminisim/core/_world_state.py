@@ -1,14 +1,14 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
 
 @dataclass
 class WorldState:
-    robot_pose: np.ndarray
-    robot_velocity: np.ndarray
-    pedestrians_poses: np.ndarray
-    pedestrians_velocities: np.ndarray
-    last_control: np.ndarray
-    robot_to_pedestrians_collisions: List[int]
+    robot_pose: Optional[np.ndarray]
+    robot_velocity: Optional[np.ndarray]
+    pedestrians_poses: Optional[np.ndarray]
+    pedestrians_velocities: Optional[np.ndarray]
+    last_control: Optional[np.ndarray]
+    robot_to_pedestrians_collisions: Optional[List[int]]

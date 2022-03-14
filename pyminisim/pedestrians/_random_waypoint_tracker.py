@@ -46,6 +46,10 @@ class RandomWaypointTracker(AbstractWaypointTracker):
             return sampled_point
         raise RuntimeError("Failed to sample waypoint")
 
+    def set_waypoints(self, waypoints: np.ndarray):
+        assert len(waypoints.shape) == 2 and waypoints.shape[1] == 2
+        self._waypoints = waypoints.copy()
+
     def _waypoint_reached(self,
                           waypoint: np.ndarray,
                           agent_position: np.ndarray) -> bool:

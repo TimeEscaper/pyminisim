@@ -31,7 +31,6 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     sensors = [PedestrianDetector(noise=sensor_noise)]
     sim = Simulation(robot_model=robot_model,
                      pedestrians_model=pedestrians_model,
-                     waypoint_tracker=tracker,
                      sensors=sensors)
     renderer = Renderer(simulation=sim,
                         resolution=80.0,
