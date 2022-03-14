@@ -23,7 +23,7 @@ class RandomWaypointTracker(AbstractWaypointTracker):
     def current_waypoints(self) -> Optional[np.ndarray]:
         return self._waypoints.copy() if self._waypoints is not None else None
 
-    def sample_waypoints(self, agents_poses: np.ndarray) -> np.ndarray:
+    def resample_all(self, agents_poses: np.ndarray) -> np.ndarray:
         assert agents_poses.shape[1] == 3
         self._waypoints = np.stack([self._sample_single_waypoint(p) for p in agents_poses[:, :2]])
         return self._waypoints.copy()

@@ -17,7 +17,7 @@ class AbstractPedestriansPolicy(ABC):
         self._waypoint_tracker = waypoint_tracker
 
         if self._waypoint_tracker.current_waypoints is None:
-            self._waypoint_tracker.sample_waypoints(initial_poses)
+            self._waypoint_tracker.resample_all(initial_poses)
 
     def reset(self,
               initial_poses: np.ndarray,
@@ -26,7 +26,7 @@ class AbstractPedestriansPolicy(ABC):
         self._poses = initial_poses
         self._velocities = initial_velocities
         if initial_waypoints is None:
-            self._waypoint_tracker.sample_waypoints(self._poses)
+            self._waypoint_tracker.resample_all(self._poses)
         else:
             self._waypoint_tracker.set_waypoints(initial_waypoints)
 

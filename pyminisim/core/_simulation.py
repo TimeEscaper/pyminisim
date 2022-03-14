@@ -43,9 +43,9 @@ class Simulation:
         if self._robot_model is not None:
             self._robot_model.control = control
 
-    def step(self) -> SimulationState:
+    def step(self, control: Optional[np.ndarray] = None) -> SimulationState:
         time_start = time.time()
-        self._make_steps()
+        self._make_steps(control)
         time_end = time.time()
         time_elapsed = time_end - time_start
         if self._rt_factor is not None:
@@ -58,11 +58,11 @@ class Simulation:
 
         return self._current_state
 
-    def _make_steps(self):
+    def _make_steps(self, control: Optional[np.ndarray]):
         if self._robot_model is not None:
-            self._robot_model.step(self._sim_dt)
-            robot_pose = self._robot_model.pose
-            robot_velocity = self._robot_model.velocity
+            self._robot_model.step(self._sim_dt, control)
+            robot_pose = self._robot_model.state.pose
+            robot_velocity = self._robot_model.state.velocity
         else:
             robot_pose = None
             robot_velocity = None
@@ -79,13 +79,13 @@ class Simulation:
         if self._robot_model is not None:
             if self._pedestrians_model is not None:
                 collisions = [i for i, e in enumerate(self._pedestrians_model.poses)
-                              if np.linalg.norm(self._robot_model.pose[:2] - e[:2])
+                              if np.linalg.norm(self._robot_model.state.pose[:2] - e[:2])
                               < (ROBOT_RADIUS + PEDESTRIAN_RADIUS)]
             else:
                 collisions = None
-            robot_pose = self._robot_model.pose
-            robot_velocity = self._robot_model.velocity
-            last_control = self._robot_model.control
+            robot_pose = self._robot_model.state.pose
+            robot_velocity = self._robot_model.state.velocity
+            last_control = self._robot_model.state.control
         else:
             collisions = None
             robot_pose = None

@@ -206,7 +206,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
         self._n_pedestrians = initial_poses.shape[0]
         self._linear_vel_magnitudes = np.repeat(pedestrian_linear_velocity_magnitude, self._n_pedestrians)
         if self._waypoint_tracker.current_waypoints is None:
-            self._waypoint_tracker.sample_waypoints(initial_poses)
+            self._waypoint_tracker.resample_all(initial_poses)
 
         self._radii = np.repeat(PEDESTRIAN_RADIUS, self._n_pedestrians)
         self._robot_radius = ROBOT_RADIUS
