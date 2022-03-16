@@ -38,7 +38,7 @@ class PedestrianDetectorSkin(AbstractSensorSkin):
         assert isinstance(reading, PedestrianDetectorReading)
         if len(reading.pedestrians) == 0:
             return
-        detected_poses = sim_state.world.pedestrians_poses[list(reading.pedestrians.keys())]
+        detected_poses = sim_state.world.pedestrians.poses[list(reading.pedestrians.keys())]
         pixel_poses = convert_pose(detected_poses, self._vis_params)
         for pixel_pose in pixel_poses:
             x, y, _ = pixel_pose
@@ -49,7 +49,7 @@ class PedestrianDetectorSkin(AbstractSensorSkin):
                                int(0.05 * self._vis_params.resolution))
 
     def _render_pie(self, screen, sim_state: SimulationState):
-        x, y, theta = convert_pose(sim_state.world.robot_pose, self._vis_params,
+        x, y, theta = convert_pose(sim_state.world.robot.pose, self._vis_params,
                                    PedestrianDetectorSkin._OFFSET + self._fov / 2.)
         surf = pygame.transform.rotate(self._surf, theta)
         rect = surf.get_rect(center=(x, y))

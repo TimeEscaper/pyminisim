@@ -7,7 +7,6 @@ from ._world_state import WorldState
 from ._sensor import AbstractSensorReading
 
 
-
 @dataclass
 class SimulationState:
     world: WorldState

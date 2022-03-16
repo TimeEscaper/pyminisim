@@ -13,7 +13,7 @@ from typing import Tuple, Optional
 import numpy as np
 from numba import njit
 
-from pyminisim.core import AbstractPedestriansPolicy, AbstractWaypointTracker
+from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansModel, AbstractWaypointTracker
 from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 
 
@@ -189,7 +189,11 @@ def _wrap_angle(angle: np.ndarray):
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
 
-class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
+class HSFMState(AbstractPedestriansModelState):
+    pass
+
+
+class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
 
     def __init__(self,
                  waypoint_tracker: AbstractWaypointTracker,
@@ -200,12 +204,13 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
                  pedestrian_linear_velocity_magnitude: float = 1.5):
         if initial_velocities is None:
             initial_velocities = np.zeros((initial_poses.shape[0], 3))
-        super(HeadedSocialForceModelPolicy, self).__init__(initial_poses, initial_velocities, waypoint_tracker)
+        super(HeadedSocialForceModelPolicy, self).__init__()
 
         self._params = hsfm_params
         self._n_pedestrians = initial_poses.shape[0]
         self._linear_vel_magnitudes = np.repeat(pedestrian_linear_velocity_magnitude, self._n_pedestrians)
-        if self._waypoint_tracker.current_waypoints is None:
+        self._waypoint_tracker = waypoint_tracker
+        if self._waypoint_tracker.state is None:
             self._waypoint_tracker.resample_all(initial_poses)
 
         self._radii = np.repeat(PEDESTRIAN_RADIUS, self._n_pedestrians)
@@ -214,6 +219,12 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
         self._m = np.repeat(pedestrian_mass, self._n_pedestrians)
         self._I = 0.5 * (self._radii ** 2)
 
+        self._state = HSFMState(initial_poses.copy(), initial_velocities.copy(), self._waypoint_tracker.state)
+
+    @property
+    def state(self) -> HSFMState:
+        return self._state
+
     def step(self, dt: float, robot_pose: Optional[np.ndarray], robot_velocity: Optional[np.ndarray]):
         if robot_pose is None:
             assert robot_velocity is None
@@ -221,16 +232,16 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
             assert robot_pose is None
 
         # Current positions
-        r = self._poses[:, :2]
+        r = self._state.poses[:, :2]
         # Current orientations and angular velocities
-        q = np.stack((self._poses[:, 2], self._velocities[:, 2]), axis=1)
+        q = np.stack((self._state.poses[:, 2], self._state.velocities[:, 2]), axis=1)
         # Current rotation matrix
         R = np.array([[[np.cos(theta), -np.sin(theta)],
-                       [np.sin(theta), np.cos(theta)]] for theta in self._poses[:, 2]])
+                       [np.sin(theta), np.cos(theta)]] for theta in self._state.poses[:, 2]])
         # Desired velocities v_d
-        v_d = _calc_desired_velocities(self._waypoint_tracker.current_waypoints, r, self._linear_vel_magnitudes)
+        v_d = _calc_desired_velocities(self._waypoint_tracker.state.current_waypoints, r, self._linear_vel_magnitudes)
         # Current velocities v
-        v = self._velocities[:, :2]
+        v = self._state.velocities[:, :2]
 
         # Here we do not use "fair" integrators (e.g. scipy.integrate.ode), as it was in original paper's code
         # in sake of better computational performance and Numba compatibility.
@@ -247,7 +258,13 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansPolicy):
                        [np.sin(theta), np.cos(theta)]] for theta in q[:, 0]])
         v = v + _matvec(R, dv_b * dt)
 
-        self._poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
-        self._velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)
+        poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
+        velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)
 
-        self._waypoint_tracker.update_waypoints(self._poses)
+        self._waypoint_tracker.update_waypoints(poses)
+
+        self._state = HSFMState(poses.copy(), velocities.copy(), self._waypoint_tracker.state)
+
+    def reset_to_state(self, state: HSFMState):
+        self._state = state
+        self._waypoint_tracker.reset_to_state(state.waypoints)

@@ -58,7 +58,7 @@ class _PedestriansSkin:
         self._sprites = [_PedestrianSprite() for _ in range(n_pedestrians)]
 
     def render(self, screen, sim_state: SimulationState):
-        pixel_poses = convert_pose(sim_state.world.pedestrians_poses, self._vis_params, _PedestriansSkin._OFFSET)
+        pixel_poses = convert_pose(sim_state.world.pedestrians.poses, self._vis_params, _PedestriansSkin._OFFSET)
         for pixel_pose, sprite in zip(pixel_poses, self._sprites):
             sprite.render(screen, pixel_pose)
 
@@ -72,4 +72,4 @@ class _RobotSkin:
         self._sprite = _RobotSprite()
 
     def render(self, screen, sim_state: SimulationState):
-        self._sprite.render(screen, convert_pose(sim_state.world.robot_pose, self._vis_params, _RobotSkin._OFFSET))
+        self._sprite.render(screen, convert_pose(sim_state.world.robot.pose, self._vis_params, _RobotSkin._OFFSET))

@@ -40,10 +40,10 @@ class Renderer:
 
         self._screen = pygame.display.set_mode(screen_size)
 
-        self._robot = _RobotSkin(self._vis_params) if simulation.current_state.world.robot_pose is not None else None
+        self._robot = _RobotSkin(self._vis_params) if simulation.current_state.world.robot is not None else None
         self._pedestrians = _PedestriansSkin(
-            simulation.current_state.world.pedestrians_poses.shape[0], self._vis_params) \
-            if simulation.current_state.world.pedestrians_poses is not None else None
+            simulation.current_state.world.pedestrians.poses.shape[0], self._vis_params) \
+            if simulation.current_state.world.pedestrians is not None else None
 
         # TODO: Decouple sensors visualization
         self._sensors = []
@@ -77,11 +77,11 @@ class Renderer:
         self._thread.join()
 
     def _render_robot(self, state: SimulationState):
-        if state.world.robot_pose is not None and self._robot is not None:
+        if state.world.robot is not None and self._robot is not None:
             self._robot.render(self._screen, state)
 
     def _render_pedestrians(self, state: SimulationState):
-        if state.world.pedestrians_poses is not None and self._pedestrians is not None:
+        if state.world.pedestrians is not None and self._pedestrians is not None:
             self._pedestrians.render(self._screen, state)
 
     # def _render_pedestrians(self, state: WorldState):
@@ -97,17 +97,17 @@ class Renderer:
     #                                     maker)
 
     def _render_sensors(self, state: SimulationState):
-        if state.world.robot_pose is not None:
+        if state.world.robot is not None:
             for sensor in self._sensors:
                 sensor.render(self._screen, state)
 
     def _render_collisions(self, state: SimulationState):
-        if state.world.robot_pose is not None and state.world.pedestrians_poses is not None:
+        if state.world.robot is not None and state.world.pedestrians is not None:
             if len(state.world.robot_to_pedestrians_collisions) == 0:
                 return
-            self._render_marker(state.world.robot_pose, ROBOT_RADIUS)
+            self._render_marker(state.world.robot.pose, ROBOT_RADIUS)
             for idx in state.world.robot_to_pedestrians_collisions:
-                self._render_marker(state.world.pedestrians_poses[idx], PEDESTRIAN_RADIUS)
+                self._render_marker(state.world.pedestrians.poses[idx], PEDESTRIAN_RADIUS)
 
     def _render_marker(self, sim_pose: np.ndarray, sim_radius: float):
         # TODO: Implement as another sensor

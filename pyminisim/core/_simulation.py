@@ -1,25 +1,23 @@
-from typing import Optional, List, Dict, Tuple
 import time
-from dataclasses import dataclass
+from typing import Optional, List, Dict
 
 import numpy as np
 
+from ._constants import ROBOT_RADIUS, PEDESTRIAN_RADIUS
+from ._motion import AbstractRobotMotionModel
+from ._pedestrians_model import AbstractPedestriansModel
+from ._sensor import AbstractSensor
+from ._simulation_state import SimulationState
 # from pyminisim.core import AbstractRobotMotionModel, AbstractPedestriansPolicy, AbstractWaypointTracker, \
 #     AbstractSensorReading, AbstractSensor, ROBOT_RADIUS, PEDESTRIAN_RADIUS
 from ._world_state import WorldState
-from ._simulation_state import SimulationState
-from ._motion import AbstractRobotMotionModel
-from ._pedestrians_policy import AbstractPedestriansPolicy
-from ._waypoints import AbstractWaypointTracker
-from ._sensor import AbstractSensorReading, AbstractSensor
-from ._constants import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 
 
 class Simulation:
 
     def __init__(self,
                  robot_model: Optional[AbstractRobotMotionModel],
-                 pedestrians_model: Optional[AbstractPedestriansPolicy],
+                 pedestrians_model: Optional[AbstractPedestriansModel],
                  sensors: List[AbstractSensor],
                  sim_dt: float = 0.01,
                  rt_factor: Optional[float] = 1.0):
@@ -28,6 +26,9 @@ class Simulation:
         self._sensors = sensors
         self._sim_dt = sim_dt
         self._rt_factor = rt_factor
+
+        self._backup_robot_model = None
+        self._backup_pedestrians_model = None
 
         self._current_state = self._get_simulation_state()
 
@@ -58,6 +59,47 @@ class Simulation:
 
         return self._current_state
 
+    def reset_to_state(self, state: WorldState):
+        if self._robot_model is not None:
+            self._robot_model.reset_to_state(state.robot)
+        if self._pedestrians_model is not None:
+            self._pedestrians_model.reset_to_state(state.pedestrians)
+        self._current_state = self._get_simulation_state()
+
+    def set_robot_enabled(self, enabled: bool):
+        if enabled:
+            if self._robot_model is not None:
+                return
+            if self._backup_robot_model is None:
+                raise RuntimeError("Robot model was not initialized")
+            self._robot_model = self._backup_robot_model
+            self._backup_robot_model = None
+        else:
+            if self._backup_robot_model is not None:
+                return
+            if self._robot_model is None:
+                raise RuntimeError("Robot model was not initialized")
+            self._backup_robot_model = self._robot_model
+            self._robot_model = None
+        self._current_state = self._get_simulation_state()
+
+    def set_pedestrians_enabled(self, enabled: bool):
+        if enabled:
+            if self._pedestrians_model is not None:
+                return
+            if self._backup_pedestrians_model is None:
+                raise RuntimeError("Pedestrians model was not initialized")
+            self._pedestrians_model = self._backup_pedestrians_model
+            self._backup_pedestrians_model = None
+        else:
+            if self._backup_pedestrians_model is not None:
+                return
+            if self._pedestrians_model is None:
+                raise RuntimeError("Pedestrians model was not initialized")
+            self._backup_pedestrians_model = self._pedestrians_model
+            self._pedestrians_model = None
+        self._current_state = self._get_simulation_state()
+
     def _make_steps(self, control: Optional[np.ndarray]):
         if self._robot_model is not None:
             self._robot_model.step(self._sim_dt, control)
@@ -78,32 +120,23 @@ class Simulation:
     def _get_world_state(self) -> WorldState:
         if self._robot_model is not None:
             if self._pedestrians_model is not None:
-                collisions = [i for i, e in enumerate(self._pedestrians_model.poses)
+                collisions = [i for i, e in enumerate(self._pedestrians_model.state.poses)
                               if np.linalg.norm(self._robot_model.state.pose[:2] - e[:2])
                               < (ROBOT_RADIUS + PEDESTRIAN_RADIUS)]
             else:
                 collisions = None
-            robot_pose = self._robot_model.state.pose
-            robot_velocity = self._robot_model.state.velocity
-            last_control = self._robot_model.state.control
+            robot_state = self._robot_model.state
         else:
             collisions = None
-            robot_pose = None
-            robot_velocity = None
-            last_control = None
+            robot_state = None
 
         if self._pedestrians_model is not None:
-            pedestrians_poses = self._pedestrians_model.poses
-            pedestrians_velocities = self._pedestrians_model.velocities
+            pedestrians_state = self._pedestrians_model.state
         else:
-            pedestrians_poses = None
-            pedestrians_velocities = None
+            pedestrians_state = None
 
-        return WorldState(robot_pose=robot_pose,
-                          robot_velocity=robot_velocity,
-                          pedestrians_poses=pedestrians_poses,
-                          pedestrians_velocities=pedestrians_velocities,
-                          last_control=last_control,
+        return WorldState(robot=robot_state,
+                          pedestrians=pedestrians_state,
                           robot_to_pedestrians_collisions=collisions)
 
     def _get_sensors_readings(self, world_state: WorldState) -> Dict:
