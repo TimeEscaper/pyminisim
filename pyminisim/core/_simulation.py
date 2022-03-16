@@ -40,10 +40,6 @@ class Simulation:
     def sensors(self) -> List[AbstractSensor]:
         return self._sensors
 
-    def set_control(self, control: np.ndarray):
-        if self._robot_model is not None:
-            self._robot_model.control = control
-
     def step(self, control: Optional[np.ndarray] = None) -> SimulationState:
         time_start = time.time()
         self._make_steps(control)

@@ -50,7 +50,6 @@ def main():
         renderer.render()
         n_frames += 1
 
-        sim.step()
         current_time = time.time()
         if current_time - start_time >= 20.0:
             end_time = current_time
