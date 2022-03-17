@@ -42,7 +42,7 @@ def main():
     renderer.initialize()
 
     running = True
-    sim.step()  # First step can take some time due to Numba compilation
+    s = sim.step()  # First step can take some time due to Numba compilation
     start_time = time.time()
     end_time = time.time()
     n_frames = 0
