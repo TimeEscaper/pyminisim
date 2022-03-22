@@ -6,8 +6,7 @@ import numpy as np
 import pygame
 
 from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS, ROBOT_RADIUS
-from pyminisim.visual import VisualizationParams
-from pyminisim.visual import PedestrianDetectorSkin
+from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, AbstractDrawing
 from pyminisim.visual.util import convert_pose
 from pyminisim.sensors import PedestrianDetector
 from ._agents import _RobotSkin, _PedestriansSkin
@@ -51,6 +50,8 @@ class Renderer:
             if sensor.sensor_name == PedestrianDetector.NAME:
                 self._sensors.append(PedestrianDetectorSkin(sensor.sensor_config, self._vis_params))
 
+        self._drawings = {}
+
         self._thread = None
 
     def initialize(self):
@@ -59,6 +60,7 @@ class Renderer:
     def render(self):
         state = self._sim.current_state
         self._screen.fill((255, 255, 255))
+        self._render_drawings(state)
         self._render_robot(state)
         self._render_pedestrians(state)
         self._render_sensors(state)
@@ -75,6 +77,16 @@ class Renderer:
         if self._thread is None:
             return
         self._thread.join()
+
+    def draw(self, name: str, drawing: AbstractDrawing):
+        self._drawings[name] = drawing
+
+    def clear_drawings(self, drawing_names: Optional[str] = None):
+        if drawing_names is None:
+            self._drawings = {}
+        else:
+            for drawing_name in drawing_names:
+                self._drawings.pop(drawing_name, None)
 
     def _render_robot(self, state: SimulationState):
         if state.world.robot is not None and self._robot is not None:
@@ -117,3 +129,7 @@ class Renderer:
                            (x, y),
                            int(sim_radius * self._vis_params.resolution),
                            int(0.05 * self._vis_params.resolution))
+
+    def _render_drawings(self, state: SimulationState):
+        for drawing in self._drawings.values():
+            drawing.render(self._screen, state, self._vis_params)

@@ -12,7 +12,7 @@ from pyminisim.core import Simulation
 from pyminisim.robot import UnicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
 from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector
-from pyminisim.visual import Renderer
+from pyminisim.visual import Renderer, CircleDrawing
 
 
 def create_sim() -> Tuple[Simulation, Renderer]:
@@ -42,14 +42,14 @@ def main():
     renderer.initialize()
 
     running = True
-    s = sim.step()  # First step can take some time due to Numba compilation
+    sim.step()  # First step can take some time due to Numba compilation
     start_time = time.time()
     end_time = time.time()
     n_frames = 0
     while running:
         renderer.render()
         n_frames += 1
-
+        sim.step()
         current_time = time.time()
         if current_time - start_time >= 20.0:
             end_time = current_time
