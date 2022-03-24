@@ -98,7 +98,7 @@ class RandomWaypointTracker(AbstractWaypointTracker):
             if len(other_positions.shape) == 1:
                 sampled_dist = np.linalg.norm(other_positions - sampled_point)
             elif len(other_positions.shape) == 2:
-                sampled_dist = np.linalg.norm(other_positions - sampled_point, axis=1)
+                sampled_dist = np.min(np.linalg.norm(other_positions - sampled_point, axis=1))
             else:
                 raise RuntimeError("Unsupported agents positions shape")
             if sampled_dist < min_distance:
