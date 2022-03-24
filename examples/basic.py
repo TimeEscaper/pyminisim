@@ -19,7 +19,7 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([2.0, 3.85, 0.0]),
                                      initial_control=np.array([0.0, np.deg2rad(25.0)]))
     tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
-    pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
+    pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=5,
                                                      waypoint_tracker=tracker)
     # You can model sensor's noise
     # sensor_noise = PedestrianDetectorNoise(distance_mu=0., distance_sigma=0.2,

@@ -208,7 +208,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         if initial_poses is None:
             random_positions = waypoint_tracker.sample_independent_points(n_pedestrians, 0.5)
             random_orientations = np.random.uniform(-np.pi, np.pi, size=n_pedestrians)
-            initial_poses = np.hstack([random_positions, random_orientations.reshape(2, 1)])
+            initial_poses = np.hstack([random_positions, random_orientations.reshape(-1, 1)])
         else:
             assert initial_poses.shape[0] == n_pedestrians
         if initial_velocities is None:
