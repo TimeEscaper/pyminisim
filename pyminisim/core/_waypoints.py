@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import numpy as np
 
@@ -29,4 +30,8 @@ class AbstractWaypointTracker(ABC):
 
     @abstractmethod
     def reset_to_state(self, state: AbstractWaypointTrackerState):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def sample_independent_points(self, n_points: int, min_cross_distance: Optional[float] = None):
         raise NotImplementedError()

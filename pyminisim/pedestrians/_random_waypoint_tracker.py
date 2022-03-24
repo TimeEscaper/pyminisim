@@ -46,9 +46,11 @@ class RandomWaypointTracker(AbstractWaypointTracker):
     def resample_all(self, agents_poses: np.ndarray) -> np.ndarray:
         assert agents_poses.shape[1] == 3
         next_waypoints = np.zeros((agents_poses.shape[0], self._n_next_waypoints + 1, 2))
-        next_waypoints[:, 0, :] = np.stack([self._sample_single_waypoint(p) for p in agents_poses[:, :2]])
+        next_waypoints[:, 0, :] = np.stack([self._sample_single_waypoint(p, self._min_sample_distance)
+                                            for p in agents_poses[:, :2]])
         for i in range(1, self._n_next_waypoints + 1):
-            next_waypoints[:, i, :] = np.stack([self._sample_single_waypoint(p) for p in next_waypoints[:, i - 1, :]])
+            next_waypoints[:, i, :] = np.stack([self._sample_single_waypoint(p, self._min_sample_distance)
+                                                for p in next_waypoints[:, i - 1, :]])
         current_waypoints = next_waypoints[:, 0, :]
         next_waypoints = next_waypoints[:, 1:, :]
         self._state = RandomWaypointTrackerState(current_waypoints, next_waypoints)
@@ -65,7 +67,7 @@ class RandomWaypointTracker(AbstractWaypointTracker):
             if not self._waypoint_reached(current_waypoints[i], agents_poses[i, :2]):
                 continue
             current_waypoints[i, :] = next_waypoints[i, 0, :].copy()
-            new_waypoint = self._sample_single_waypoint(next_waypoints[i, -1, :])
+            new_waypoint = self._sample_single_waypoint(next_waypoints[i, -1, :], self._min_sample_distance)
             next_waypoints[i, :-1, :] = next_waypoints[i, 1:, :]
             next_waypoints[i, -1, :] = new_waypoint
 
@@ -76,11 +78,30 @@ class RandomWaypointTracker(AbstractWaypointTracker):
     def reset_to_state(self, state: RandomWaypointTrackerState):
         self._state = state
 
-    def _sample_single_waypoint(self, agent_position: np.ndarray):
+    def sample_independent_points(self, n_points: int, min_cross_distance: Optional[float] = None):
+        assert n_points > 0
+        if min_cross_distance is None:
+            min_cross_distance = -np.inf
+
+        sampled_points = np.random.uniform(low=np.array([0.0, 0.0]),
+                                           high=np.array([self._world_size[0], self._world_size[1]])).reshape(1, -1)
+        for i in range(1, n_points):
+            point = self._sample_single_waypoint(sampled_points, min_cross_distance)
+            sampled_points = np.vstack([sampled_points, point.reshape(1, -1)])
+
+        return sampled_points
+
+    def _sample_single_waypoint(self, other_positions: np.ndarray, min_distance: float):
         for _ in range(self._max_sample_trials):
             sampled_point = np.random.uniform(low=np.array([0.0, 0.0]),
                                               high=np.array([self._world_size[0], self._world_size[1]]))
-            if np.linalg.norm(agent_position - sampled_point) < self._min_sample_distance:
+            if len(other_positions.shape) == 1:
+                sampled_dist = np.linalg.norm(other_positions - sampled_point)
+            elif len(other_positions.shape) == 2:
+                sampled_dist = np.linalg.norm(other_positions - sampled_point, axis=1)
+            else:
+                raise RuntimeError("Unsupported agents positions shape")
+            if sampled_dist < min_distance:
                 continue
             return sampled_point
         raise RuntimeError("Failed to sample waypoint")
@@ -89,3 +110,4 @@ class RandomWaypointTracker(AbstractWaypointTracker):
                           waypoint: np.ndarray,
                           agent_position: np.ndarray) -> bool:
         return np.linalg.norm(waypoint - agent_position) <= self._reach_distance
+

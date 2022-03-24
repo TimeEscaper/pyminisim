@@ -197,14 +197,24 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
 
     def __init__(self,
                  waypoint_tracker: AbstractWaypointTracker,
-                 initial_poses: np.ndarray,
+                 n_pedestrians: int,
+                 initial_poses: Optional[np.ndarray] = None,
                  initial_velocities: Optional[np.ndarray] = None,
                  hsfm_params: HSFMParams = HSFMParams.create_default(),
                  pedestrian_mass: float = 70.0,
                  pedestrian_linear_velocity_magnitude: float = 1.5):
-        if initial_velocities is None:
-            initial_velocities = np.zeros((initial_poses.shape[0], 3))
         super(HeadedSocialForceModelPolicy, self).__init__()
+
+        if initial_poses is None:
+            random_positions = waypoint_tracker.sample_independent_points(n_pedestrians, 0.5)
+            random_orientations = np.random.uniform(-np.pi, np.pi, size=n_pedestrians)
+            initial_poses = np.hstack([random_positions, random_orientations.reshape(2, 1)])
+        else:
+            assert initial_poses.shape[0] == n_pedestrians
+        if initial_velocities is None:
+            initial_velocities = np.zeros((n_pedestrians, 3))
+        else:
+            assert initial_velocities.shape[0] == n_pedestrians
 
         self._params = hsfm_params
         self._n_pedestrians = initial_poses.shape[0]
@@ -268,3 +278,6 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
     def reset_to_state(self, state: HSFMState):
         self._state = state
         self._waypoint_tracker.reset_to_state(state.waypoints)
+
+    def _init_poses(self) -> np.ndarray:
+        pass
