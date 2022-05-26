@@ -11,16 +11,19 @@ from ._simulation_state import SimulationState
 # from pyminisim.core import AbstractRobotMotionModel, AbstractPedestriansPolicy, AbstractWaypointTracker, \
 #     AbstractSensorReading, AbstractSensor, ROBOT_RADIUS, PEDESTRIAN_RADIUS
 from ._world_state import WorldState
+from ._world_map import AbstractWorldMap
 
 
 class Simulation:
 
     def __init__(self,
+                 world_map: AbstractWorldMap,
                  robot_model: Optional[AbstractRobotMotionModel],
                  pedestrians_model: Optional[AbstractPedestriansModel],
                  sensors: List[AbstractSensor],
                  sim_dt: float = 0.01,
                  rt_factor: Optional[float] = 1.0):
+        self._world_map = world_map
         self._robot_model = robot_model
         self._pedestrians_model = pedestrians_model
         self._sensors = sensors
@@ -31,6 +34,10 @@ class Simulation:
         self._backup_pedestrians_model = None
 
         self._current_state = self._get_simulation_state()
+
+    @property
+    def world_map(self) -> AbstractWorldMap:
+        return self._world_map
 
     @property
     def current_state(self) -> SimulationState:

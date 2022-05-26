@@ -9,6 +9,7 @@ import numpy as np
 import pygame
 
 from pyminisim.core import Simulation
+from pyminisim.world_map import EmptyWorld, CirclesWorld
 from pyminisim.robot import UnicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
 from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector
@@ -27,7 +28,8 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     #                                        misdetection_prob=0.1)
     sensor_noise = None
     sensors = [PedestrianDetector(noise=sensor_noise)]
-    sim = Simulation(robot_model=robot_model,
+    sim = Simulation(world_map=EmptyWorld(),
+                     robot_model=robot_model,
                      pedestrians_model=pedestrians_model,
                      sensors=sensors)
     renderer = Renderer(simulation=sim,

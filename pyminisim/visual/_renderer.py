@@ -9,7 +9,9 @@ from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS, ROBOT
 from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, AbstractDrawing
 from pyminisim.visual.util import convert_pose
 from pyminisim.sensors import PedestrianDetector
+from pyminisim.world_map import EmptyWorld, CirclesWorld
 from ._agents import _RobotSkin, _PedestriansSkin
+from ._maps import EmptyWorldSkin, CirclesWorldSkin
 
 
 class _RendererThread(threading.Thread):
@@ -50,6 +52,12 @@ class Renderer:
             if sensor.sensor_name == PedestrianDetector.NAME:
                 self._sensors.append(PedestrianDetectorSkin(sensor.sensor_config, self._vis_params))
 
+        # TODO: Decouple world map visualization
+        if isinstance(self._sim.world_map, CirclesWorld):
+            self._map = CirclesWorldSkin(self._sim.world_map, self._vis_params)
+        else:
+            self._map = EmptyWorldSkin()
+
         self._drawings = {}
 
         self._thread = None
@@ -60,6 +68,7 @@ class Renderer:
     def render(self):
         state = self._sim.current_state
         self._screen.fill((255, 255, 255))
+        self._map.render(self._screen, state)
         self._render_drawings(state)
         self._render_robot(state)
         self._render_pedestrians(state)

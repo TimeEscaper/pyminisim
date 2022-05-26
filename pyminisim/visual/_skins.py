@@ -8,3 +8,10 @@ class AbstractSensorSkin(ABC):
     @abstractmethod
     def render(self, screen, sim_state: SimulationState):
         raise NotImplementedError()
+
+
+class AbstractMapSkin(ABC):
+
+    @abstractmethod
+    def render(self, screen, sim_state: SimulationState):
+        raise NotImplementedError()
