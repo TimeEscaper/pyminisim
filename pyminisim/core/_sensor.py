@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from ._world_state import WorldState
+from ._world_map import AbstractWorldMap
 
 
 class AbstractSensorConfig(ABC):
@@ -26,5 +27,5 @@ class AbstractSensor(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_reading(self, world_state: WorldState) -> AbstractSensorReading:
+    def get_reading(self, world_state: WorldState, world_map: AbstractWorldMap) -> AbstractSensorReading:
         raise NotImplementedError()

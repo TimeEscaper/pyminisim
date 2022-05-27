@@ -117,7 +117,7 @@ class Simulation:
 
     def _get_simulation_state(self) -> SimulationState:
         world_state = self._get_world_state()
-        sensors_readings = self._get_sensors_readings(world_state)
+        sensors_readings = self._get_sensors_readings(world_state, self._world_map)
         return SimulationState(world=world_state, sensors=sensors_readings)
 
     def _get_world_state(self) -> WorldState:
@@ -142,8 +142,8 @@ class Simulation:
                           pedestrians=pedestrians_state,
                           robot_to_pedestrians_collisions=collisions)
 
-    def _get_sensors_readings(self, world_state: WorldState) -> Dict:
+    def _get_sensors_readings(self, world_state: WorldState, world_map: AbstractWorldMap) -> Dict:
         if self._robot_model is not None:
-            return {sensor.sensor_name: sensor.get_reading(world_state) for sensor in self._sensors}
+            return {sensor.sensor_name: sensor.get_reading(world_state, world_map) for sensor in self._sensors}
         else:
             return {}

@@ -3,7 +3,7 @@ from typing import Dict, Tuple, Optional
 
 import numpy as np
 
-from pyminisim.core import AbstractSensorConfig, AbstractSensorReading, AbstractSensor, WorldState
+from pyminisim.core import AbstractSensorConfig, AbstractSensorReading, AbstractSensor, WorldState, AbstractWorldMap
 
 
 @dataclass
@@ -59,7 +59,7 @@ class PedestrianDetector(AbstractSensor):
     def sensor_config(self) -> AbstractSensorConfig:
         return self._config
 
-    def get_reading(self, world_state: WorldState) -> AbstractSensorReading:
+    def get_reading(self, world_state: WorldState, world_map: AbstractWorldMap) -> AbstractSensorReading:
         if world_state.pedestrians is None or world_state.robot is None:
             return PedestrianDetectorReading({})
 
