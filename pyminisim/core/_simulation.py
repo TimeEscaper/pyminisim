@@ -36,6 +36,10 @@ class Simulation:
         self._current_state = self._get_simulation_state()
 
     @property
+    def sim_dt(self) -> float:
+        return self._sim_dt
+
+    @property
     def world_map(self) -> AbstractWorldMap:
         return self._world_map
 
