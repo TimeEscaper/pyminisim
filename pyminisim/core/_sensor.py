@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from ._world_state import WorldState
 from ._world_map import AbstractWorldMap
@@ -14,12 +15,18 @@ class AbstractSensorReading(ABC):
 
 class AbstractSensor(ABC):
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, period: float):
+        assert period >= 0.
         self._name = name
+        self._period = period
 
     @property
     def sensor_name(self) -> str:
         return self._name
+
+    @property
+    def period(self) -> float:
+        return self._period
 
     @property
     @abstractmethod
@@ -29,3 +36,9 @@ class AbstractSensor(ABC):
     @abstractmethod
     def get_reading(self, world_state: WorldState, world_map: AbstractWorldMap) -> AbstractSensorReading:
         raise NotImplementedError()
+
+
+@dataclass
+class SensorState:
+    reading: AbstractSensorReading
+    hold_time: float

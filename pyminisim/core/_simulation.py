@@ -6,7 +6,7 @@ import numpy as np
 from ._constants import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 from ._motion import AbstractRobotMotionModel
 from ._pedestrians_model import AbstractPedestriansModel
-from ._sensor import AbstractSensor
+from ._sensor import AbstractSensor, SensorState
 from ._simulation_state import SimulationState
 # from pyminisim.core import AbstractRobotMotionModel, AbstractPedestriansPolicy, AbstractWaypointTracker, \
 #     AbstractSensorReading, AbstractSensor, ROBOT_RADIUS, PEDESTRIAN_RADIUS
@@ -33,7 +33,7 @@ class Simulation:
         self._backup_robot_model = None
         self._backup_pedestrians_model = None
 
-        self._current_state = self._get_simulation_state()
+        self._current_state = self._get_simulation_state({})
 
     @property
     def sim_dt(self) -> float:
@@ -62,16 +62,17 @@ class Simulation:
                 # TODO: Log think on logging RT factor info
                 time.sleep(self._sim_dt / self._rt_factor)
 
-        self._current_state = self._get_simulation_state()
+        self._current_state = self._get_simulation_state(self._current_state.sensors)
 
         return self._current_state
 
     def reset_to_state(self, state: WorldState):
+        # TODO: Add sensors state to argument
         if self._robot_model is not None:
             self._robot_model.reset_to_state(state.robot)
         if self._pedestrians_model is not None:
             self._pedestrians_model.reset_to_state(state.pedestrians)
-        self._current_state = self._get_simulation_state()
+        self._current_state = self._get_simulation_state({})
 
     def set_robot_enabled(self, enabled: bool):
         if enabled:
@@ -88,7 +89,7 @@ class Simulation:
                 raise RuntimeError("Robot model was not initialized")
             self._backup_robot_model = self._robot_model
             self._robot_model = None
-        self._current_state = self._get_simulation_state()
+        self._current_state = self._get_simulation_state(self._current_state.sensors)
 
     def set_pedestrians_enabled(self, enabled: bool):
         if enabled:
@@ -105,7 +106,7 @@ class Simulation:
                 raise RuntimeError("Pedestrians model was not initialized")
             self._backup_pedestrians_model = self._pedestrians_model
             self._pedestrians_model = None
-        self._current_state = self._get_simulation_state()
+        self._current_state = self._get_simulation_state(self._current_state.sensors)
 
     def _make_steps(self, control: Optional[np.ndarray]):
         if self._robot_model is not None:
@@ -119,10 +120,10 @@ class Simulation:
         if self._pedestrians_model is not None:
             self._pedestrians_model.step(self._sim_dt, robot_pose, robot_velocity)
 
-    def _get_simulation_state(self) -> SimulationState:
+    def _get_simulation_state(self, previous_sensors_state: Dict) -> SimulationState:
         world_state = self._get_world_state()
-        sensors_readings = self._get_sensors_readings(world_state, self._world_map)
-        return SimulationState(world=world_state, sensors=sensors_readings)
+        sensors_state = self._update_sensors_state(world_state, self._world_map, previous_sensors_state)
+        return SimulationState(world=world_state, sensors=sensors_state)
 
     def _get_world_state(self) -> WorldState:
         if self._robot_model is not None:
@@ -146,8 +147,27 @@ class Simulation:
                           pedestrians=pedestrians_state,
                           robot_to_pedestrians_collisions=collisions)
 
-    def _get_sensors_readings(self, world_state: WorldState, world_map: AbstractWorldMap) -> Dict:
-        if self._robot_model is not None:
-            return {sensor.sensor_name: sensor.get_reading(world_state, world_map) for sensor in self._sensors}
-        else:
+    def _update_sensors_state(self, world_state: WorldState, world_map: AbstractWorldMap,
+                              previous_sensors_state: Dict[str, SensorState]) -> Dict[str, SensorState]:
+        if self._robot_model is None:
             return {}
+        if len(previous_sensors_state) == 0:
+            return {sensor.sensor_name: SensorState(reading=sensor.get_reading(world_state, world_map), hold_time=0.)
+                    for sensor in self._sensors}
+
+        new_state = {}
+        for sensor in self._sensors:
+            if sensor.sensor_name not in previous_sensors_state:
+                new_state[sensor.sensor_name] = SensorState(reading=sensor.get_reading(world_state, world_map),
+                                                            hold_time=0.)
+            else:
+                sensor_state = previous_sensors_state[sensor.sensor_name]
+                hold_time = sensor_state.hold_time + self._sim_dt
+                if hold_time >= sensor.period:
+                    reading = sensor.get_reading(world_state, world_map)
+                    hold_time = 0.
+                else:
+                    reading = sensor_state.reading
+                new_state[sensor.sensor_name] = SensorState(reading, hold_time)
+
+        return new_state

@@ -51,7 +51,7 @@ class PedestrianDetector(AbstractSensor):
                  noise: Optional[PedestrianDetectorNoise] = None):
         if noise is not None:
             assert noise.misdetection_prob <= 1.
-        super(PedestrianDetector, self).__init__(PedestrianDetector.NAME)
+        super(PedestrianDetector, self).__init__(PedestrianDetector.NAME, period=0.)
         self._config = config
         self._noise = noise
 

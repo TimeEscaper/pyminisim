@@ -34,7 +34,7 @@ class PedestrianDetectorSkin(AbstractSensorSkin):
         self._render_pie(screen, sim_state)
 
     def _render_detections(self, screen, sim_state: SimulationState):
-        reading = sim_state.sensors[PedestrianDetector.NAME]
+        reading = sim_state.sensors[PedestrianDetector.NAME].reading
         assert isinstance(reading, PedestrianDetectorReading)
         if len(reading.pedestrians) == 0:
             return

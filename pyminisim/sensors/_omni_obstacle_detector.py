@@ -47,7 +47,7 @@ class OmniObstacleDetector(AbstractSensor):
                  noise: Optional[OmniObstacleDetectorNoise] = None):
         if noise is not None:
             assert noise.misdetection_prob <= 1.
-        super(OmniObstacleDetector, self).__init__(OmniObstacleDetector.NAME)
+        super(OmniObstacleDetector, self).__init__(OmniObstacleDetector.NAME, period=0.)
         self._config = config
         self._noise = noise
 

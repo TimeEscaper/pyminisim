@@ -4,10 +4,10 @@ from typing import List, Dict
 import numpy as np
 
 from ._world_state import WorldState
-from ._sensor import AbstractSensorReading
+from ._sensor import SensorState
 
 
 @dataclass
 class SimulationState:
     world: WorldState
-    sensors: Dict[str, AbstractSensorReading]
+    sensors: Dict[str, SensorState]
