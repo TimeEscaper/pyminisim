@@ -5,7 +5,8 @@ from PIL import Image, ImageDraw
 from pyminisim.core import SimulationState, PEDESTRIAN_RADIUS
 from pyminisim.visual import AbstractSensorSkin, VisualizationParams
 from pyminisim.visual.util import convert_pose
-from pyminisim.sensors import PedestrianDetector, PedestrianDetectorReading, PedestrianDetectorConfig
+from pyminisim.sensors import PedestrianDetector, PedestrianDetectorReading, PedestrianDetectorConfig, \
+    LidarSensor, LidarSensorReading, LidarSensorConfig
 
 
 class PedestrianDetectorSkin(AbstractSensorSkin):
@@ -54,3 +55,31 @@ class PedestrianDetectorSkin(AbstractSensorSkin):
         surf = pygame.transform.rotate(self._surf, theta)
         rect = surf.get_rect(center=(x, y))
         screen.blit(surf, rect)
+
+
+class LidarSensorSkin(AbstractSensorSkin):
+
+    _POINT_COLOR = (255, 0, 0)
+    _POINT_RADIUS = 0.03
+
+    def __init__(self, sensor_config: LidarSensorConfig, vis_params: VisualizationParams):
+        super(LidarSensorSkin, self).__init__()
+        self._vis_params = vis_params
+
+    def render(self, screen, sim_state: SimulationState):
+        if LidarSensor.NAME not in sim_state.sensors:
+            return
+        reading = sim_state.sensors[LidarSensor.NAME].reading
+        if not isinstance(reading, LidarSensorReading):
+            return
+        if len(reading.points) == 0:
+            return
+
+        pixel_points = convert_pose(reading.points, self._vis_params)
+        for pixel_point in pixel_points:
+            x, y = pixel_point
+            pygame.draw.circle(screen,
+                               LidarSensorSkin._POINT_COLOR,
+                               (x, y),
+                               int(LidarSensorSkin._POINT_RADIUS * self._vis_params.resolution),
+                               0)

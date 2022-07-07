@@ -12,7 +12,7 @@ from pyminisim.core import Simulation
 from pyminisim.world_map import EmptyWorld, CirclesWorld
 from pyminisim.robot import UnicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
-from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, OmniObstacleDetector
+from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, OmniObstacleDetector, LidarSensor
 from pyminisim.visual import Renderer, CircleDrawing
 
 
@@ -27,10 +27,10 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     #                                        angle_mu=0., angle_sigma=0.05,
     #                                        misdetection_prob=0.1)
     sensor_noise = None
-    sensors = [PedestrianDetector(noise=sensor_noise), OmniObstacleDetector()]
-    sim = Simulation(world_map=EmptyWorld(), # CirclesWorld(circles=np.array([[3, 3, 1]])),
+    sensors = [PedestrianDetector(noise=sensor_noise), OmniObstacleDetector()]  # LidarSensor()]
+    sim = Simulation(world_map=EmptyWorld(),  # CirclesWorld(circles=np.array([[5., 5., 1.]])),
                      robot_model=robot_model,
-                     pedestrians_model=pedestrians_model,
+                     pedestrians_model=None,
                      sensors=sensors)
     renderer = Renderer(simulation=sim,
                         resolution=80.0,

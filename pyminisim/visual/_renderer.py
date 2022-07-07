@@ -6,9 +6,9 @@ import numpy as np
 import pygame
 
 from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS, ROBOT_RADIUS
-from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, AbstractDrawing
+from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarSensorSkin, AbstractDrawing
 from pyminisim.visual.util import convert_pose
-from pyminisim.sensors import PedestrianDetector
+from pyminisim.sensors import PedestrianDetector, LidarSensor
 from pyminisim.world_map import EmptyWorld, CirclesWorld
 from ._agents import _RobotSkin, _PedestriansSkin
 from ._maps import EmptyWorldSkin, CirclesWorldSkin
@@ -51,6 +51,8 @@ class Renderer:
         for sensor in self._sim.sensors:
             if sensor.sensor_name == PedestrianDetector.NAME:
                 self._sensors.append(PedestrianDetectorSkin(sensor.sensor_config, self._vis_params))
+            elif sensor.sensor_name == LidarSensor.NAME:
+                self._sensors.append(LidarSensorSkin(sensor.sensor_config, self._vis_params))
 
         # TODO: Decouple world map visualization
         if isinstance(self._sim.world_map, CirclesWorld):
