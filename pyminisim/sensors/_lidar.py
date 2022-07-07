@@ -1,16 +1,8 @@
-from dataclasses import dataclass
-from typing import Dict, Tuple, Optional
+from typing import Optional
 
 import numpy as np
 
 from pyminisim.core import AbstractSensorConfig, AbstractSensorReading, AbstractSensor, WorldState, AbstractWorldMap
-
-
-# @dataclass
-# class OmniObstacleDetectorNoise:
-#     distance_mu: float
-#     distance_sigma: float
-#     misdetection_prob: float
 
 
 class LidarSensorConfig(AbstractSensorConfig):
@@ -57,14 +49,54 @@ class LidarSensorReading(AbstractSensorReading):
         return self._points.copy()
 
 
+class LidarSensorNoise:
+
+    def __init__(self,
+                 point_mean: np.ndarray = np.array([0., 0.]),
+                 point_cov: np.ndarray = np.diag([0.001, 0.001]),
+                 drop_prob: float = 0.):
+        assert point_mean.shape == (2,)
+        assert point_cov.shape == (2, 2)
+        assert (point_cov >= 0.).all()
+        assert 0. <= drop_prob <= 1.
+
+        self._point_mean = point_mean
+        self._point_cov = point_cov
+        self._drop_prob = drop_prob
+
+    @property
+    def mean(self) -> np.ndarray:
+        return self._point_mean.copy()
+
+    @property
+    def cov(self) -> np.ndarray:
+        return self._point_cov.copy()
+
+    @property
+    def drop_prob(self) -> float:
+        return self._drop_prob
+
+    def noisify_reading(self, reading: LidarSensorReading) -> LidarSensorReading:
+        points = reading.points
+        drop_mask = np.random.binomial(1, 1 - self._drop_prob, points.shape[0]).astype(bool)
+        points = points[drop_mask]
+        if len(points) == 0:
+            return LidarSensorReading(np.array([]))
+        gaussian_noise = np.random.multivariate_normal(self._point_mean, self._point_cov, points.shape[0])
+        points = points + gaussian_noise
+        return LidarSensorReading(points)
+
+
 class LidarSensor(AbstractSensor):
     NAME = "lidar"
 
     def __init__(self,
-                 config: LidarSensorConfig = LidarSensorConfig()):
+                 config: LidarSensorConfig = LidarSensorConfig(),
+                 noise: Optional[LidarSensorNoise] = None):
         period = 1. / config.frequency if np.isfinite(config.frequency) else 0.
         super(LidarSensor, self).__init__(LidarSensor.NAME, period=period)
         self._config = config
+        self._noise = noise
 
     @property
     def sensor_config(self) -> AbstractSensorConfig:
@@ -88,4 +120,8 @@ class LidarSensor(AbstractSensor):
                 continue
             points.append(check_points[i, np.argmin(beam), :])
 
-        return LidarSensorReading(np.array(points))
+        reading = LidarSensorReading(np.array(points))
+        if self._noise is not None:
+            reading = self._noise.noisify_reading(reading)
+
+        return reading
