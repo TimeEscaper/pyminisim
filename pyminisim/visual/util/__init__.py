@@ -1,1 +1,1 @@
-from ._util import convert_pose
+from ._util import PoseConverter

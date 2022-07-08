@@ -6,8 +6,9 @@ import numpy as np
 import pygame
 
 from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS, ROBOT_RADIUS
-from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarSensorSkin, AbstractDrawing
-from pyminisim.visual.util import convert_pose
+from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarSensorSkin, \
+    AbstractDrawing, AbstractDrawingRenderer, CircleDrawing, CircleDrawingRenderer
+from pyminisim.visual.util import PoseConverter
 from pyminisim.sensors import PedestrianDetector, LidarSensor
 from pyminisim.world_map import EmptyWorld, CirclesWorld
 from ._agents import _RobotSkin, _PedestriansSkin
@@ -37,6 +38,7 @@ class Renderer:
                  fps: float = 30.0):
         self._sim = simulation
         self._vis_params = VisualizationParams(resolution=resolution, screen_size=screen_size)
+        self._pose_converter = PoseConverter(self._vis_params)
         self._fps = fps
 
         self._screen = pygame.display.set_mode(screen_size)
@@ -89,14 +91,19 @@ class Renderer:
             return
         self._thread.join()
 
-    def draw(self, name: str, drawing: AbstractDrawing):
-        self._drawings[name] = drawing
+    def draw(self, id: str, drawing: AbstractDrawing):
+        if drawing.name == CircleDrawing.NAME:
+            drawing_renderer = CircleDrawingRenderer(drawing, self._vis_params)
+        else:
+            # TODO: Warning or exception
+            return
+        self._drawings[id] = drawing_renderer
 
-    def clear_drawings(self, drawing_names: Optional[str] = None):
-        if drawing_names is None:
+    def clear_drawings(self, drawing_ids: Optional[str] = None):
+        if drawing_ids is None:
             self._drawings = {}
         else:
-            for drawing_name in drawing_names:
+            for drawing_name in drawing_ids:
                 self._drawings.pop(drawing_name, None)
 
     def _render_robot(self, state: SimulationState):
@@ -134,7 +141,7 @@ class Renderer:
 
     def _render_marker(self, sim_pose: np.ndarray, sim_radius: float):
         # TODO: Implement as another sensor
-        x, y, _ = convert_pose(sim_pose, self._vis_params)
+        x, y, _ = self._pose_converter.convert(sim_pose)
         pygame.draw.circle(self._screen,
                            Renderer._COLLISION_COLOR,
                            (x, y),
@@ -143,4 +150,4 @@ class Renderer:
 
     def _render_drawings(self, state: SimulationState):
         for drawing in self._drawings.values():
-            drawing.render(self._screen, state, self._vis_params)
+            drawing.render(self._screen, state)

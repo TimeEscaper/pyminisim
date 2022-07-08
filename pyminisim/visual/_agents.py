@@ -7,7 +7,7 @@ from pygame.locals import RLEACCEL
 
 from pyminisim.core import SimulationState
 from pyminisim.visual import VisualizationParams
-from pyminisim.visual.util import convert_pose
+from pyminisim.visual.util import PoseConverter
 
 
 class _AbstractAgentSprite(pygame.sprite.Sprite, ABC):
@@ -54,11 +54,11 @@ class _PedestriansSkin:
     _OFFSET = 180.
 
     def __init__(self, n_pedestrians: int, vis_params: VisualizationParams):
-        self._vis_params = vis_params
+        self._pose_converter = PoseConverter(vis_params)
         self._sprites = [_PedestrianSprite() for _ in range(n_pedestrians)]
 
     def render(self, screen, sim_state: SimulationState):
-        pixel_poses = convert_pose(sim_state.world.pedestrians.poses, self._vis_params, _PedestriansSkin._OFFSET)
+        pixel_poses = self._pose_converter.convert(sim_state.world.pedestrians.poses, _PedestriansSkin._OFFSET)
         for pixel_pose, sprite in zip(pixel_poses, self._sprites):
             sprite.render(screen, pixel_pose)
 
@@ -68,8 +68,8 @@ class _RobotSkin:
     _OFFSET = 90.
 
     def __init__(self, vis_params: VisualizationParams):
-        self._vis_params = vis_params
+        self._pose_converter = PoseConverter(vis_params)
         self._sprite = _RobotSprite()
 
     def render(self, screen, sim_state: SimulationState):
-        self._sprite.render(screen, convert_pose(sim_state.world.robot.pose, self._vis_params, _RobotSkin._OFFSET))
+        self._sprite.render(screen, self._pose_converter.convert(sim_state.world.robot.pose, _RobotSkin._OFFSET))

@@ -83,8 +83,9 @@ class RandomWaypointTracker(AbstractWaypointTracker):
         if min_cross_distance is None:
             min_cross_distance = -np.inf
 
-        sampled_points = np.random.uniform(low=np.array([0.0, 0.0]),
-                                           high=np.array([self._world_size[0], self._world_size[1]])).reshape(1, -1)
+        sampled_points = np.random.uniform(low=np.array([-self._world_size[0] / 2., -self._world_size[0] / 2]),
+                                           high=np.array([self._world_size[0] / 2., self._world_size[0] / 2]))\
+            .reshape(1, -1)
         for i in range(1, n_points):
             point = self._sample_single_waypoint(sampled_points, min_cross_distance)
             sampled_points = np.vstack([sampled_points, point.reshape(1, -1)])
@@ -93,8 +94,8 @@ class RandomWaypointTracker(AbstractWaypointTracker):
 
     def _sample_single_waypoint(self, other_positions: np.ndarray, min_distance: float):
         for _ in range(self._max_sample_trials):
-            sampled_point = np.random.uniform(low=np.array([0.0, 0.0]),
-                                              high=np.array([self._world_size[0], self._world_size[1]]))
+            sampled_point = np.random.uniform(low=np.array([-self._world_size[0] / 2., -self._world_size[0] / 2]),
+                                              high=np.array([self._world_size[0] / 2., self._world_size[0] / 2]))
             if len(other_positions.shape) == 1:
                 sampled_dist = np.linalg.norm(other_positions - sampled_point)
             elif len(other_positions.shape) == 2:
