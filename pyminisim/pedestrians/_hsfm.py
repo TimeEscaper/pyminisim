@@ -202,7 +202,8 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
                  initial_velocities: Optional[np.ndarray] = None,
                  hsfm_params: HSFMParams = HSFMParams.create_default(),
                  pedestrian_mass: float = 70.0,
-                 pedestrian_linear_velocity_magnitude: float = 1.5):
+                 pedestrian_linear_velocity_magnitude: float = 1.5,
+                 robot_visible: bool = True):
         super(HeadedSocialForceModelPolicy, self).__init__()
 
         if initial_poses is None:
@@ -222,6 +223,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         self._waypoint_tracker = waypoint_tracker
         if self._waypoint_tracker.state is None:
             self._waypoint_tracker.resample_all(initial_poses)
+        self._robot_visible = robot_visible
 
         self._radii = np.repeat(PEDESTRIAN_RADIUS, self._n_pedestrians)
         self._robot_radius = ROBOT_RADIUS
@@ -255,9 +257,12 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
 
         # Here we do not use "fair" integrators (e.g. scipy.integrate.ode), as it was in original paper's code
         # in sake of better computational performance and Numba compatibility.
-        if robot_pose is not None:
+        if robot_pose is not None and self._robot_visible:
             robot_pose = robot_pose[:2]
             robot_velocity = robot_velocity[:2]
+        else:
+            robot_pose = None
+            robot_velocity = None
         dr, dv_b, dq = _hsfm_ode(self._m, self._I, v, v_d, r, self._radii, R, q, self._robot_radius,
                                  robot_pose, robot_velocity,
                                  **self._params.__dict__)
