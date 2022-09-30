@@ -26,15 +26,15 @@ class DoubleIntegratorRobotModel(AbstractRobotMotionModel):
     def _init_state(self,
                     initial_pose: np.ndarray,
                     initial_velocity: np.ndarray,
-                    initial_control: np.ndarray) -> SimpleHolonomicRobotModelState:
-        return SimpleHolonomicRobotModelState(initial_pose, initial_velocity, initial_control)
+                    initial_control: np.ndarray) -> DoubleIntegratorRobotModelState:
+        return DoubleIntegratorRobotModelState(initial_pose, initial_velocity, initial_control)
 
     def reset(self,
               initial_pose: np.ndarray,
               initial_velocity: np.ndarray,
               initial_control: np.ndarray):
         assert initial_control.shape == (DoubleIntegratorRobotModel._CONTROL_DIM,)
-        super(SimpleHolonomicRobotModel, self).reset(initial_pose, initial_velocity, initial_control)
+        super(DoubleIntegratorRobotModel, self).reset(initial_pose, initial_velocity, initial_control)
 
     def step(self, dt: float, control: Optional[np.ndarray] = None):
         if control is None:
@@ -46,6 +46,6 @@ class DoubleIntegratorRobotModel(AbstractRobotMotionModel):
         v_x = self._state.velocity[0] + control[0] * dt
         v_y = self._state.velocity[1] + control[1] * dt
         w = self._state.velocity[2]
-        self._state = DoubleIntegratorRobotModelState(np.array[x, y, theta],
+        self._state = DoubleIntegratorRobotModelState(np.array([x, y, theta]),
                                                       np.array([v_x, v_y, w]),
                                                       control.copy())
