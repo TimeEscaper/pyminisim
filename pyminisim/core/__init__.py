@@ -6,4 +6,4 @@ from ._motion import AbstractRobotMotionModelState, AbstractRobotMotionModel
 from ._waypoints import AbstractWaypointTrackerState, AbstractWaypointTracker
 from ._pedestrians_model import AbstractPedestriansModelState, AbstractPedestriansModel
 from ._sensor import AbstractSensorConfig, AbstractSensorReading, AbstractSensor
-from ._world_map import AbstractWorldMap
+from ._world_map import AbstractWorldMapState, AbstractWorldMap, AbstractStaticWorldMap

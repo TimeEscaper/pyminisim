@@ -68,6 +68,7 @@ class Simulation:
 
     def reset_to_state(self, state: WorldState):
         # TODO: Add sensors state to argument
+        self._world_map.reset_to_state(state.world_map)
         if self._robot_model is not None:
             self._robot_model.reset_to_state(state.robot)
         if self._pedestrians_model is not None:
@@ -109,6 +110,8 @@ class Simulation:
         self._current_state = self._get_simulation_state(self._current_state.sensors)
 
     def _make_steps(self, control: Optional[np.ndarray]):
+        self._world_map.step(self._sim_dt)
+
         if self._robot_model is not None:
             self._robot_model.step(self._sim_dt, control)
             robot_pose = self._robot_model.state.pose
@@ -143,7 +146,8 @@ class Simulation:
         else:
             pedestrians_state = None
 
-        return WorldState(robot=robot_state,
+        return WorldState(world_map=self._world_map.current_state,
+                          robot=robot_state,
                           pedestrians=pedestrians_state,
                           robot_to_pedestrians_collisions=collisions)
 

@@ -2,13 +2,19 @@ from typing import Union
 
 import numpy as np
 
-from pyminisim.core import AbstractWorldMap
+from pyminisim.core import AbstractWorldMapState, AbstractStaticWorldMap
 
 
-class EmptyWorld(AbstractWorldMap):
+class EmptyWorldMapState(AbstractWorldMapState):
 
     def __init__(self):
-        super(EmptyWorld, self).__init__()
+        super(EmptyWorldMapState, self).__init__()
+
+
+class EmptyWorld(AbstractStaticWorldMap):
+
+    def __init__(self):
+        super(EmptyWorld, self).__init__(EmptyWorldMapState())
 
     def closest_distance_to_obstacle(self, point: np.ndarray) -> Union[float, np.ndarray]:
         assert point.shape == (2,) or (len(point.shape) == 2 and point.shape[1] == 2)
