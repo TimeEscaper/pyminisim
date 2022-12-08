@@ -7,7 +7,8 @@ import pygame
 
 from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS, ROBOT_RADIUS
 from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarSensorSkin, \
-    AbstractDrawing, AbstractDrawingRenderer, CircleDrawing, CircleDrawingRenderer
+    AbstractDrawing, AbstractDrawingRenderer, CircleDrawing, CircleDrawingRenderer, \
+    Covariance2dDrawing, Covariance2dDrawingRenderer
 from pyminisim.visual.util import PoseConverter
 from pyminisim.sensors import PedestrianDetector, LidarSensor
 from pyminisim.world_map import EmptyWorld, CirclesWorld
@@ -94,6 +95,8 @@ class Renderer:
     def draw(self, id: str, drawing: AbstractDrawing):
         if drawing.name == CircleDrawing.NAME:
             drawing_renderer = CircleDrawingRenderer(drawing, self._vis_params)
+        elif drawing.name == Covariance2dDrawing.NAME:
+            drawing_renderer = Covariance2dDrawingRenderer(drawing, self._vis_params)
         else:
             # TODO: Warning or exception
             return
