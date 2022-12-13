@@ -6,30 +6,48 @@ from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionMod
 
 
 class UnicycleRobotModelState(AbstractRobotMotionModelState):
-    pass
+
+    _STATE_DIM = 3
+    _CONTROL_DIM = 2
+
+    def __init__(self,
+                 state: np.ndarray,
+                 control: np.ndarray):
+        assert state.shape == (UnicycleRobotModelState._STATE_DIM,)
+        assert control.shape == (UnicycleRobotModelState._CONTROL_DIM,)
+        super(UnicycleRobotModelState, self).__init__()
+        self._state = state.copy()
+        self._control = control.copy()
+
+    @property
+    def pose(self) -> np.ndarray:
+        return self._state[:3].copy()
+
+    @property
+    def velocity(self) -> np.ndarray:
+        theta = self._state[2]
+        v = self._control[0]
+        v_x = v * np.cos(theta)
+        v_y = v * np.sin(theta)
+        w = self._control[1]
+        return np.array([v_x, v_y, w])
+
+    @property
+    def state(self) -> np.ndarray:
+        return self._state.copy()
+
+    @property
+    def control(self) -> np.ndarray:
+        return self._control.copy()
 
 
 class UnicycleRobotModel(AbstractRobotMotionModel):
 
     def __init__(self,
                  initial_pose: np.ndarray,
-                 initial_velocity: np.ndarray = np.array([0., 0., 0.]),
                  initial_control: np.ndarray = np.array([0., 0.])):
-        assert initial_control.shape == (2,)
-        super(UnicycleRobotModel, self).__init__(initial_pose, initial_velocity, initial_control)
-
-    def _init_state(self,
-                    initial_pose: np.ndarray,
-                    initial_velocity: np.ndarray,
-                    initial_control: np.ndarray) -> UnicycleRobotModelState:
-        return UnicycleRobotModelState(initial_pose, initial_velocity, initial_control)
-
-    def reset(self,
-              initial_pose: np.ndarray,
-              initial_velocity: np.ndarray,
-              initial_control: np.ndarray):
-        assert initial_control.shape == (2,)
-        super(UnicycleRobotModel, self).reset(initial_pose, initial_velocity, initial_control)
+        state = UnicycleRobotModelState(initial_pose, initial_control)
+        super(UnicycleRobotModel, self).__init__(state)
 
     def step(self, dt: float, control: Optional[np.ndarray] = None):
         # TODO: Should we update velocity before step?
@@ -39,9 +57,7 @@ class UnicycleRobotModel(AbstractRobotMotionModel):
         y = self._state.pose[1] + control[0] * np.sin(self._state.pose[2]) * dt
         theta = self._state.pose[2] + control[1] * dt
         theta = (theta + np.pi) % (2 * np.pi) - np.pi
-        v_x = control[0] * np.cos(theta)
-        v_y = control[0] * np.sin(theta)
+        v = control[0]
         w = control[1]
         self._state = UnicycleRobotModelState(np.array([x, y, theta]),
-                                              np.array([v_x, v_y, w]),
-                                              control)
+                                              np.array([v, w]))

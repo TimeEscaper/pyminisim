@@ -6,31 +6,43 @@ from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionMod
 
 
 class SimpleHolonomicRobotModelState(AbstractRobotMotionModelState):
-    pass
 
-
-class SimpleHolonomicRobotModel(AbstractRobotMotionModel):
+    _STATE_DIM = 3
     _CONTROL_DIM = 3
 
     def __init__(self,
+                 state: np.ndarray,
+                 control: np.ndarray):
+        assert state.shape == (SimpleHolonomicRobotModelState._STATE_DIM,)
+        assert control.shape == (SimpleHolonomicRobotModelState._CONTROL_DIM,)
+        super(SimpleHolonomicRobotModelState, self).__init__()
+        self._state = state.copy()
+        self._control = control.copy()
+
+    @property
+    def pose(self) -> np.ndarray:
+        return self._state.copy()
+
+    @property
+    def velocity(self) -> np.ndarray:
+        return self._control.copy()
+
+    @property
+    def state(self) -> np.ndarray:
+        return self._state.copy()
+
+    @property
+    def control(self) -> np.ndarray:
+        return self._control.copy()
+
+
+class SimpleHolonomicRobotModel(AbstractRobotMotionModel):
+
+    def __init__(self,
                  initial_pose: np.ndarray,
-                 initial_velocity: np.ndarray = np.array([0., 0., 0.]),
                  initial_control: np.ndarray = np.array([0., 0., 0.])):
-        assert initial_control.shape == (SimpleHolonomicRobotModel._CONTROL_DIM,)
-        super(SimpleHolonomicRobotModel, self).__init__(initial_pose, initial_velocity, initial_control)
-
-    def _init_state(self,
-                    initial_pose: np.ndarray,
-                    initial_velocity: np.ndarray,
-                    initial_control: np.ndarray) -> SimpleHolonomicRobotModelState:
-        return SimpleHolonomicRobotModelState(initial_pose, initial_velocity, initial_control)
-
-    def reset(self,
-              initial_pose: np.ndarray,
-              initial_velocity: np.ndarray,
-              initial_control: np.ndarray):
-        assert initial_control.shape == (SimpleHolonomicRobotModel._CONTROL_DIM,)
-        super(SimpleHolonomicRobotModel, self).reset(initial_pose, initial_velocity, initial_control)
+        state = SimpleHolonomicRobotModelState(initial_pose, initial_control)
+        super(SimpleHolonomicRobotModel, self).__init__(state)
 
     def step(self, dt: float, control: Optional[np.ndarray] = None):
         if control is None:
@@ -43,5 +55,4 @@ class SimpleHolonomicRobotModel(AbstractRobotMotionModel):
         v_y = control[1]
         w = control[2]
         self._state = SimpleHolonomicRobotModelState(np.array([x, y, theta]),
-                                                     np.array([v_x, v_y, w]),
-                                                     control)
+                                                     np.array([v_x, v_y, w]))

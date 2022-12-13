@@ -6,56 +6,52 @@ import numpy as np
 
 class AbstractRobotMotionModelState(ABC):
 
-    def __init__(self,
-                 pose: np.ndarray,
-                 velocity: np.ndarray,
-                 control: np.ndarray):
-        assert pose.shape == (3,)
-        assert velocity.shape == (3,)
-        self._pose = pose
-        self._velocity = velocity
-        self._control = control
-
     @property
+    @abstractmethod
     def pose(self) -> np.ndarray:
-        return self._pose
+        """
+        Pose of the robot, always in format (x, y, theta).
+        :return: NumPy array of [x, y, theta]
+        """
+        raise NotImplementedError()
 
     @property
+    @abstractmethod
     def velocity(self) -> np.ndarray:
-        return self._velocity
+        """
+        Linear velocity projections and angular velocity of the robot, always in format (v_x, v_y, w).
+        :return: NumPy array of [v_x, v_y, w]
+        """
+        raise NotImplementedError()
 
     @property
+    @abstractmethod
+    def state(self) -> np.ndarray:
+        """
+        State of the robot according to the motion model.
+        :return: NumPy vector of dimensionality according to the model
+        """
+        raise NotImplementedError()
+
+    @property
+    @abstractmethod
     def control(self) -> np.ndarray:
-        return self._control
+        """
+        Control of the robot according to the motion model.
+        :return: NumPy vector of dimensionality according to the model
+        """
+        raise NotImplementedError()
 
 
 class AbstractRobotMotionModel(ABC):
 
     def __init__(self,
-                 initial_pose: np.ndarray,
-                 initial_velocity: np.ndarray,
-                 initial_control: np.ndarray):
-        assert initial_pose.shape == (3,)
-        assert initial_velocity.shape == (3,)
-        self._state = self._init_state(initial_pose, initial_velocity, initial_control)
-
-    def _init_state(self,
-                    initial_pose: np.ndarray,
-                    initial_velocity: np.ndarray,
-                    initial_control: np.ndarray) -> AbstractRobotMotionModelState:
-        raise NotImplementedError()
+                 initial_state: AbstractRobotMotionModelState):
+        self._state = initial_state
 
     @property
     def state(self) -> AbstractRobotMotionModelState:
         return self._state
-
-    def reset(self,
-              initial_pose: np.ndarray,
-              initial_velocity: np.ndarray,
-              initial_control: np.ndarray):
-        assert initial_pose.shape == (3,)
-        assert initial_velocity.shape == (3,)
-        self._state = self._init_state(initial_pose, initial_velocity, initial_control)
 
     def reset_to_state(self, state: AbstractRobotMotionModelState):
         self._state = state
