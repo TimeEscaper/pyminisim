@@ -20,9 +20,15 @@ from pyminisim.visual import Renderer, CircleDrawing
 def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.0]),
                                      initial_control=np.array([0.0, np.deg2rad(25.0)]))
+
     # tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
-    tracker = FixedWaypointTracker(waypoints=np.array([[[3., 3.], [5., 3.]],
-                                                       [[-3., -3.], [5., -3]]]))
+    n_pedestrians = 2
+    waypoints = np.zeros((n_pedestrians, 2, 2))
+    waypoints[0, :, :] = np.array([[3., 3.],
+                                   [-3., -3.]])
+    waypoints[1, :, :] = np.array([[-3., -3.],
+                                   [3., 3.]])
+    tracker = FixedWaypointTracker(waypoints=waypoints)
     pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
                                                      waypoint_tracker=tracker,
                                                      initial_poses=np.array([[-3., -3., 0.],
@@ -57,7 +63,7 @@ def main():
         n_frames += 1
         sim.step()
         current_time = time.time()
-        if current_time - start_time >= 20.0:
+        if current_time - start_time >= 1000.0:
             end_time = current_time
             break
     print("FPS: ", n_frames / (end_time - start_time))
