@@ -11,7 +11,7 @@ import pygame
 from pyminisim.core import Simulation
 from pyminisim.world_map import EmptyWorld, CirclesWorld
 from pyminisim.robot import UnicycleRobotModel
-from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
+from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker, FixedWaypointTracker
 from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, \
     LidarSensor, LidarSensorNoise
 from pyminisim.visual import Renderer, CircleDrawing
@@ -20,9 +20,13 @@ from pyminisim.visual import Renderer, CircleDrawing
 def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.0]),
                                      initial_control=np.array([0.0, np.deg2rad(25.0)]))
-    tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
-    pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=5,
-                                                     waypoint_tracker=tracker)
+    # tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
+    tracker = FixedWaypointTracker(waypoints=np.array([[[3., 3.], [5., 3.]],
+                                                       [[-3., -3.], [5., -3]]]))
+    pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
+                                                     waypoint_tracker=tracker,
+                                                     initial_poses=np.array([[-3., -3., 0.],
+                                                                             [3., 3., 0.]]))
     # You can model sensor's noise
     # pedestrian_detector_noise = PedestrianDetectorNoise(distance_mu=0., distance_sigma=0.2,
     #                                                     angle_mu=0., angle_sigma=0.05,
@@ -31,7 +35,7 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     sensors = [PedestrianDetector(noise=pedestrian_detector_noise)]  # LidarSensor(noise=LidarSensorNoise())]
     sim = Simulation(world_map=EmptyWorld(),  # CirclesWorld(circles=np.array([[2., 2., 1.]])),
                      robot_model=robot_model,
-                     pedestrians_model=None,
+                     pedestrians_model=pedestrians_model,
                      sensors=sensors)
     renderer = Renderer(simulation=sim,
                         resolution=80.0,

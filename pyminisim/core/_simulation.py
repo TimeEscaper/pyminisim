@@ -1,4 +1,5 @@
 import time
+import random
 from typing import Optional, List, Dict
 
 import numpy as np
@@ -50,6 +51,11 @@ class Simulation:
     @property
     def sensors(self) -> List[AbstractSensor]:
         return self._sensors
+
+    @staticmethod
+    def seed(seed: int) -> None:
+        random.seed(seed)
+        np.random.seed(seed)
 
     def step(self, control: Optional[np.ndarray] = None) -> SimulationState:
         time_start = time.time()
