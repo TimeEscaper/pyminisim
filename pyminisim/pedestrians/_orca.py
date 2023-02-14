@@ -19,6 +19,7 @@ class ORCAParams:
     max_speed: float
     velocity: tuple
     safe_distance: float
+    min_reach_tolerance: float
 
     @staticmethod
     def create_default():
@@ -27,14 +28,17 @@ class ORCAParams:
                           time_horizon = 1.5,
                           time_horizon_obst = 2,
                           radius = PEDESTRIAN_RADIUS,
-                          max_speed = 2,
-                          velocity = (0, 0))
-
+                          max_speed = 1,
+                          velocity = (0, 0),
+                          safe_distance = 0.2,
+                          min_reach_tolerance = 0.2)
+                          
 class ORCAState(AbstractPedestriansModelState):
     pass
 
 class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
     def __init__(self,
+                 dt: float,
                  waypoint_tracker: AbstractWaypointTracker,
                  n_pedestrians: int,
                  initial_poses: Optional[np.ndarray] = None,
@@ -53,7 +57,7 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
             initial_velocities = np.zeros((n_pedestrians, 3))
         else:
             assert initial_velocities.shape[0] == n_pedestrians
-
+        
         self._params = orca_params
         self._n_pedestrians = initial_poses.shape[0]
         self._waypoint_tracker = waypoint_tracker
@@ -61,44 +65,66 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
             self._waypoint_tracker.resample_all(initial_poses)
         self._robot_visible = robot_visible
         self._rvo_sim = None
-    
+
+        self._rvo_sim = rvo2.PyRVOSimulator(timeStep = dt, 
+                                            neighborDist = self._params.neighbor_dist, 
+                                            maxNeighbors = self._params.max_neighbors,
+                                            timeHorizon = self._params.time_horizon,
+                                            timeHorizonObst = self._params.time_horizon_obst, 
+                                            radius = self._params.radius + self._params.safe_distance, 
+                                            maxSpeed = self._params.max_speed,
+                                            velocity = self._params.velocity)
+
+        # Add pedestrians
+        for i in range(self._n_pedestrians):
+            self._rvo_sim.addAgent(pos = tuple(initial_poses[i]),
+                                   neighborDist = None, 
+                                   maxNeighbors = None,
+                                   timeHorizon = None,
+                                   timeHorizonObst = None,
+                                   radius = self._params.radius + 0.5,
+                                   maxSpeed = None,
+                                   velocity = initial_velocities[i])
+
+        self._state = ORCAState(initial_poses.copy(), initial_velocities.copy(), self._waypoint_tracker.state)
+
     @property
     def state(self) -> ORCAState:
         return self._state
 
-    def step(self, 
-             dt: float, 
-             robot_pose: Optional[np.ndarray], 
-             robot_velocity: Optional[np.ndarray]):
+    def set_preferred_velocities(self) -> np.ndarray:
+        
+        vel_array = np.zeros([self._n_pedestrians, 2])
+        #Set the preferred velocity for each agent.
+        for i in range(self._rvo_sim.getNumAgents()):
+            vector = np.array(self._waypoint_tracker.state.current_waypoints[i]) - np.array(self._rvo_sim.getAgentPosition(i))
+            if np.linalg.norm(vector) < self._params.min_reach_tolerance: #self._rvo_sim.getAgentRadius(i):
+                # Agent is within one radius of its goal, set preferred velocity to zero
+                vel = (0, 0)
+                self._rvo_sim.setAgentPrefVelocity(i, vel)
+            else:
+                vel = tuple((vector / np.linalg.norm(vector)) * self._params.max_speed)
+                self._rvo_sim.setAgentPrefVelocity(i, vel)
+            vel_array[i, :] = vel
+        return vel_array
 
-        if robot_pose is None:
-            assert robot_velocity is None
-        elif robot_velocity is None:
-            assert robot_pose is None
+    def step(self,
+             dt: float = None, # I left this parameter to save the implementation
+             robot_pose: Optional[np.ndarray] = None, 
+             robot_velocity: Optional[np.ndarray] = None):
 
-        if self._rvo_sim is not None and self._rvo_sim.getNumAgents() != len(self.state): #+ 1:
-            del self._rvo_sim
-            self._rvo_sim = None
+        self._rvo_sim.doStep()
+        velocities = self.set_preferred_velocities()
+        velocities = np.hstack([velocities, np.zeros([self._n_pedestrians, 1])])
 
-        if self._rvo_sim is None:
-            self._rvo_sim = rvo2.PyRVOSimulator(dt, 
-                                                self._params.neighbor_dist, 
-                                                self._params.max_neighbors,
-                                                self._params.time_horizon,
-                                                self._params.time_horizon_obst, 
-                                                self._params.radius, 
-                                                self._params.max_speed,
-                                                self._params.velocity)
-            # Add Robot
-            self._rvo_sim.addAgent(pos = robot_pose, 
-                                   neighborDist = ROBOT_RADIUS +  self._params.safe_distance,
-                                   radius = ROBOT_RADIUS,
-                                   velocity = robot_velocity)
-       
-            # Add pedestrians
-            for i in self._n_pedestrians:
-                self._rvo_sim.addAgent(pos = self._initial_poses[i],
-                                       neighborDist = PEDESTRIAN_RADIUS + self._params.safe_distance,
-                                       velocity = self._initial_velocities[i])
-        else:
-            
+        poses = np.array([self._rvo_sim.getAgentPosition(agent_no) for agent_no in range(self._n_pedestrians)])
+        poses = np.hstack([poses, np.zeros([self._n_pedestrians, 1])])
+        poses[:, 2] = np.arctan2(velocities[:, 1], velocities[:, 0])
+
+        self._waypoint_tracker.update_waypoints(poses)
+
+        self._state = ORCAState(poses.copy(), velocities.copy(), self._waypoint_tracker.state)
+    
+    def reset_to_state(self, state: ORCAState):
+        self._state = state
+        self._waypoint_tracker.reset_to_state(state.waypoints)
