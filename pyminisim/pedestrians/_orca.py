@@ -24,7 +24,7 @@ class ORCAParams:
     @staticmethod
     def create_default():
         return ORCAParams(neighbor_dist = 1.5,
-                          max_neighbors = 5,
+                          max_neighbors = 8,
                           time_horizon = 1.5,
                           time_horizon_obst = 2,
                           radius = PEDESTRIAN_RADIUS,
@@ -64,6 +64,7 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
         if self._waypoint_tracker.state is None:
             self._waypoint_tracker.resample_all(initial_poses)
         self._robot_visible = robot_visible
+        self._memory_direction = np.zeros([n_pedestrians, 1])
 
         self._rvo_sim = rvo2.PyRVOSimulator(timeStep = dt, 
                                             neighborDist = self._params.neighbor_dist, 
@@ -106,7 +107,7 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
         #Set the preferred velocity for each agent.
         for i in range(self._n_pedestrians):
             vector = np.array(self._waypoint_tracker.state.current_waypoints[i]) - np.array(self._rvo_sim.getAgentPosition(i))
-            if np.linalg.norm(vector) < self._params.min_reach_tolerance: #self._rvo_sim.getAgentRadius(i):
+            if np.linalg.norm(vector) < self._params.min_reach_tolerance:
                 # Agent is within one radius of its goal, set preferred velocity to zero
                 vel = (0, 0)
                 self._rvo_sim.setAgentPrefVelocity(i, vel)
@@ -127,7 +128,17 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
 
         poses = np.array([self._rvo_sim.getAgentPosition(agent_no) for agent_no in range(self._n_pedestrians)])
         poses = np.hstack([poses, np.zeros([self._n_pedestrians, 1])])
-        poses[:, 2] = np.arctan2(velocities[:, 1], velocities[:, 0])
+        
+        # Assign pedestrian direction
+        for ped in range(self._n_pedestrians):
+            # If pedestrian reached the goal than save last direction
+            if velocities[ped, 1] == 0 and velocities[ped, 0] == 0:
+                poses[ped, 2] = self._memory_direction[ped]
+            # Else assign direction of the velocity vector
+            else:
+                poses[ped, 2] = np.arctan2(velocities[ped, 1], velocities[ped, 0])
+
+        self._memory_direction = poses[:, 2]
 
         self._waypoint_tracker.update_waypoints(poses)
 

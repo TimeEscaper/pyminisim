@@ -22,7 +22,7 @@ DEFAULT_COLOR_HEX_PALETTE = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467b
 
 
 def create_sim() -> Tuple[Simulation, Renderer]:
-    robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.0]),
+    robot_model = UnicycleRobotModel(initial_pose=np.array([10., 10., 0.0]),
                                      initial_control=np.array([0.0, np.deg2rad(25.0)]))
 
     pedestrians_goals= [[[-4,  0]],                              # Provide goals for the pedestrians according to the amount specified in total_peds, [x, y], [m, m]
