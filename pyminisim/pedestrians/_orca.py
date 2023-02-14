@@ -64,7 +64,6 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
         if self._waypoint_tracker.state is None:
             self._waypoint_tracker.resample_all(initial_poses)
         self._robot_visible = robot_visible
-        self._rvo_sim = None
 
         self._rvo_sim = rvo2.PyRVOSimulator(timeStep = dt, 
                                             neighborDist = self._params.neighbor_dist, 
@@ -85,6 +84,15 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
                                    radius = self._params.radius + 0.5,
                                    maxSpeed = None,
                                    velocity = initial_velocities[i])
+        if robot_visible:
+            self._rvo_sim.addAgent(pos = (0, 0),
+                                   neighborDist = None, 
+                                   maxNeighbors = None,
+                                   timeHorizon = None,
+                                   timeHorizonObst = None,
+                                   radius = ROBOT_RADIUS,
+                                   maxSpeed = None,
+                                   velocity = (0, 0))
 
         self._state = ORCAState(initial_poses.copy(), initial_velocities.copy(), self._waypoint_tracker.state)
 
@@ -96,7 +104,7 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
         
         vel_array = np.zeros([self._n_pedestrians, 2])
         #Set the preferred velocity for each agent.
-        for i in range(self._rvo_sim.getNumAgents()):
+        for i in range(self._n_pedestrians):
             vector = np.array(self._waypoint_tracker.state.current_waypoints[i]) - np.array(self._rvo_sim.getAgentPosition(i))
             if np.linalg.norm(vector) < self._params.min_reach_tolerance: #self._rvo_sim.getAgentRadius(i):
                 # Agent is within one radius of its goal, set preferred velocity to zero
@@ -124,7 +132,12 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
         self._waypoint_tracker.update_waypoints(poses)
 
         self._state = ORCAState(poses.copy(), velocities.copy(), self._waypoint_tracker.state)
-    
+
+        if self._robot_visible:
+            # As robot is added as the last agent, it is index would be equal to the number of total pedestrians
+            self._rvo_sim.setAgentPosition(self._n_pedestrians, tuple(robot_pose))
+            self._rvo_sim.setAgentPrefVelocity(self._n_pedestrians, tuple(robot_velocity))
+
     def reset_to_state(self, state: ORCAState):
         self._state = state
         self._waypoint_tracker.reset_to_state(state.waypoints)
