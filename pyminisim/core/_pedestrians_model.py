@@ -12,8 +12,8 @@ class AbstractPedestriansModelState(ABC):
                  poses: np.ndarray,
                  velocities: np.ndarray,
                  waypoints_state: AbstractWaypointTrackerState):
-        assert len(poses.shape) == 2 and poses.shape[1] == 3
-        assert len(velocities.shape) == 2  and velocities.shape[1] == 3
+        assert len(poses.shape) == 2 and poses.shape[1] == 3, f"Given {len(poses.shape)=} and {poses.shape[1]=}"
+        assert len(velocities.shape) == 2  and velocities.shape[1] == 3, f"Given {len(velocities.shape)=} and {velocities.shape[1]=}"
         assert poses.shape[0] == velocities.shape[0]
         self._poses = poses
         self._velocities = velocities
