@@ -25,7 +25,6 @@ class AbstractDrawingRenderer(ABC):
 
 
 class CircleDrawing(AbstractDrawing):
-
     NAME = "circle"
 
     def __init__(self,
@@ -64,7 +63,6 @@ class CircleDrawing(AbstractDrawing):
 
 
 class Covariance2dDrawing(AbstractDrawing):
-    # TODO: Make subclass of the ellipse drawing
 
     NAME = "covariance_2d"
 
@@ -72,13 +70,15 @@ class Covariance2dDrawing(AbstractDrawing):
                  mean: np.ndarray,
                  covariance: np.ndarray,
                  color: Tuple[int, int, int],
-                 width: float):
+                 width: float,
+                 n_sigma: int = 1):
         super(Covariance2dDrawing, self).__init__()
         assert mean.shape == (2,) and covariance.shape == (2, 2)
         self._mean = mean.copy()
         self._covariance = covariance.copy()
         self._color = color
         self._width = width
+        self._n_sigma = n_sigma
 
     @property
     def name(self) -> str:
@@ -99,6 +99,10 @@ class Covariance2dDrawing(AbstractDrawing):
     @property
     def width(self) -> float:
         return self._width
+
+    @property
+    def n_sigma(self) -> int:
+        return self._n_sigma
 
 
 class CircleDrawingRenderer(AbstractDrawingRenderer):
@@ -123,30 +127,37 @@ class CircleDrawingRenderer(AbstractDrawingRenderer):
 
 class Covariance2dDrawingRenderer(AbstractDrawingRenderer):
 
-    _N_POINTS = 100
-
     def __init__(self,
                  drawing: Covariance2dDrawing,
                  vis_params: VisualizationParams):
         # TODO: Drawing type assertions
-        self._pose_converter = PoseConverter(vis_params)
-        self._mean = drawing.mean
-        self._covariance = drawing.covariance
-        self._color = drawing.color
-        self._radius = int(drawing.width / 2 * vis_params.resolution)
-        # self._pixel_center = pose_converter.convert(drawing.mean)
-        # self._pixel_radius = int(max(drawing.width // 2, 1) * vis_params.resolution)
-        # self._color = drawing.color
+        pose_converter = PoseConverter(vis_params)
+
+        lambdas, es = np.linalg.eig(drawing.covariance)
+        lambdas = np.sqrt(lambdas)
+
+        top_left = np.array(drawing.mean)
+        top_left = pose_converter.convert(top_left)
+        half_width = int(drawing.n_sigma * lambdas[1] * vis_params.resolution)
+        half_height = int(drawing.n_sigma * lambdas[0] * vis_params.resolution)
+
+        rect_width = 2 * half_width
+        rect_height = 2 * half_height
+        angle = -np.degrees(np.arctan2(*es[:, 0][::-1]))
+
+        rect = (0, 0, rect_width, rect_height)
+        thickness = int(vis_params.resolution * drawing.width)
+
+        surface = pygame.Surface((rect_width,
+                                  rect_height),
+                                 pygame.SRCALPHA, 32)
+        surface = surface.convert_alpha()
+        ellipse = pygame.draw.ellipse(surface, drawing.color, rect, thickness)
+        self._surface = pygame.transform.rotate(surface, angle)
+
+        rect_center = self._surface.get_rect().center
+        self._center = (top_left[0] - rect_center[0],
+                        top_left[1] - rect_center[1])
 
     def render(self, screen, sim_state: SimulationState):
-        a = np.linalg.cholesky(self._covariance)
-        circle = [np.array([np.cos(alpha), np.sin(alpha)])
-                  for alpha in np.linspace(0, 2 * np.pi, Covariance2dDrawingRenderer._N_POINTS)]
-        contour = np.array([a @ point + self._mean for point in circle])
-        for point in contour:
-            point = self._pose_converter.convert(point)
-            pygame.draw.circle(screen,
-                               self._color,
-                               point,
-                               self._radius,
-                               0)
+        screen.blit(self._surface, self._center)
