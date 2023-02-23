@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 import numpy as np
 
@@ -41,21 +41,29 @@ class FixedWaypointTracker(AbstractWaypointTracker):
         assert agents_poses.shape[1] == 3
         return self._state.current_waypoints
 
-    def update_waypoints(self, agents_poses: np.ndarray) -> np.ndarray:
+    def update_waypoints(self, agents_poses: np.ndarray) -> Tuple[np.ndarray, List[bool]]:
         assert agents_poses.shape[0] == self._waypoints.shape[0]
 
         current_indices = self._state.current_indices
         current_waypoints = self._state.current_waypoints
         n_points = self._waypoints.shape[1]
         new_waypoints = np.zeros_like(current_waypoints)
+        is_steady = []
         # TODO: Vectorization
         for i in range(agents_poses.shape[0]):
             if self._waypoint_reached(current_waypoints[i], agents_poses[i, :2]):
-                current_indices[i] = min(current_indices[i] + 1, n_points - 1)
+                new_index = current_indices[i] + 1
+                if new_index < n_points:
+                    current_indices[i] = new_index
+                    is_steady.append(False)
+                else:
+                    current_indices[i] = n_points - 1
+                    is_steady.append(True)
+                # current_indices[i] = min(current_indices[i] + 1, n_points - 1)
             new_waypoints[i, :] = self._waypoints[i, current_indices[i], :]
         self._state = FixedWaypointTrackerState(new_waypoints, current_indices)
 
-        return self._state.current_waypoints.copy()
+        return self._state.current_waypoints.copy(), is_steady
 
     def reset_to_state(self, state: FixedWaypointTrackerState):
         self._state = state

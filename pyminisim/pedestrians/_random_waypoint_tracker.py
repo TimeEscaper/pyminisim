@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 import numpy as np
 
@@ -56,7 +56,7 @@ class RandomWaypointTracker(AbstractWaypointTracker):
         self._state = RandomWaypointTrackerState(current_waypoints, next_waypoints)
         return current_waypoints.copy()
 
-    def update_waypoints(self, agents_poses: np.ndarray) -> np.ndarray:
+    def update_waypoints(self, agents_poses: np.ndarray) -> Tuple[np.ndarray, List[bool]]:
         if self._state is None:
             raise RuntimeError("Waypoint tracker is not initialized")
         assert agents_poses.shape[0] == self._state.current_waypoints.shape[0]
@@ -73,7 +73,7 @@ class RandomWaypointTracker(AbstractWaypointTracker):
 
         self._state = RandomWaypointTrackerState(current_waypoints, next_waypoints)
 
-        return current_waypoints.copy()
+        return current_waypoints.copy(), [False for _ in range(agents_poses.shape[0])]
 
     def reset_to_state(self, state: RandomWaypointTrackerState):
         self._state = state

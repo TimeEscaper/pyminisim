@@ -243,6 +243,8 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         elif robot_velocity is None:
             assert robot_pose is None
 
+        previous_waypoints = self._waypoint_tracker.state.current_waypoints
+
         # Current positions
         r = self._state.poses[:, :2]
         # Current orientations and angular velocities
@@ -276,7 +278,10 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
         velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)
 
-        self._waypoint_tracker.update_waypoints(poses)
+        new_waypoints, is_steady = self._waypoint_tracker.update_waypoints(poses)
+        for i, steady in enumerate(is_steady):
+            if steady:
+                velocities[i, :] = np.array([0., 0., 0.])
 
         self._state = HSFMState(poses.copy(), velocities.copy(), self._waypoint_tracker.state)
 

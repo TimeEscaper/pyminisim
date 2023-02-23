@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple, List
 
 import numpy as np
 
@@ -25,7 +25,7 @@ class AbstractWaypointTracker(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def update_waypoints(self, agents_poses: np.ndarray) -> np.ndarray:
+    def update_waypoints(self, agents_poses: np.ndarray) -> Tuple[np.ndarray, List[bool]]:
         raise NotImplementedError()
 
     @abstractmethod
