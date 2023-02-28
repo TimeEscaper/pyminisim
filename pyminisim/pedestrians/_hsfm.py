@@ -203,7 +203,8 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
                  hsfm_params: HSFMParams = HSFMParams.create_default(),
                  pedestrian_mass: float = 70.0,
                  pedestrian_linear_velocity_magnitude: float = 1.5,
-                 robot_visible: bool = True):
+                 robot_visible: bool = True,
+                 noise_std: Optional[float] = None):
         super(HeadedSocialForceModelPolicy, self).__init__()
 
         if initial_poses is None:
@@ -232,6 +233,8 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         self._I = 0.5 * (self._radii ** 2)
 
         self._state = HSFMState(initial_poses.copy(), initial_velocities.copy(), self._waypoint_tracker.state)
+
+        self._noise_std = noise_std
 
     @property
     def state(self) -> HSFMState:
@@ -268,7 +271,8 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         dr, dv_b, dq = _hsfm_ode(self._m, self._I, v, v_d, r, self._radii, R, q, self._robot_radius,
                                  robot_pose, robot_velocity,
                                  **self._params.__dict__)
-
+        if self._noise_std is not None:
+            dv_b = dv_b + np.random.normal(0, self._noise_std, dv_b.shape)
         r = r + dr * dt
         q = q + dq * dt
         R = np.array([[[np.cos(theta), -np.sin(theta)],
