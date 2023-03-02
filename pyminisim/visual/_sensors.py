@@ -40,7 +40,7 @@ class PedestrianDetectorSkin(AbstractSensorSkin):
         assert isinstance(reading, PedestrianDetectorReading)
         if len(reading.pedestrians) == 0:
             return
-        detected_poses = sim_state.world.pedestrians.poses[list(reading.pedestrians.keys())]
+        detected_poses = np.array([sim_state.world.pedestrians.poses[k] for k in reading.pedestrians.keys()])
         pixel_poses = self._pose_converter.convert(detected_poses)
         for pixel_pose in pixel_poses:
             x, y, _ = pixel_pose

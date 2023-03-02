@@ -67,7 +67,7 @@ class PedestrianDetector(AbstractSensor):
         ped_poses = world_state.pedestrians.poses
         readings = {}
 
-        for i, ped in enumerate(ped_poses):
+        for i, ped in ped_poses.items():
             distance = np.linalg.norm(robot_pose[:2] - ped[:2])
             if distance > self._config.max_dist:
                 continue

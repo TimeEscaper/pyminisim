@@ -3,6 +3,7 @@ from typing import Tuple
 import pkg_resources
 
 import pygame
+import numpy as np
 from pygame.locals import RLEACCEL
 
 from pyminisim.core import SimulationState
@@ -58,7 +59,8 @@ class _PedestriansSkin:
         self._sprites = [_PedestrianSprite() for _ in range(n_pedestrians)]
 
     def render(self, screen, sim_state: SimulationState):
-        pixel_poses = self._pose_converter.convert(sim_state.world.pedestrians.poses, _PedestriansSkin._OFFSET)
+        ped_poses = np.stack(sim_state.world.pedestrians.poses.values(), axis=0)
+        pixel_poses = self._pose_converter.convert(ped_poses, _PedestriansSkin._OFFSET)
         for pixel_pose, sprite in zip(pixel_poses, self._sprites):
             sprite.render(screen, pixel_pose)
 

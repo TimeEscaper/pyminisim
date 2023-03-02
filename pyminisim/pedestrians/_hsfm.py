@@ -231,7 +231,8 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         self._m = np.repeat(pedestrian_mass, self._n_pedestrians)
         self._I = 0.5 * (self._radii ** 2)
 
-        self._state = HSFMState(initial_poses.copy(), initial_velocities.copy(), self._waypoint_tracker.state)
+        self._state = HSFMState({i: (initial_poses[i], initial_velocities[i])
+                                 for i in range(self._n_pedestrians)}, self._waypoint_tracker.state)
 
     @property
     def state(self) -> HSFMState:
@@ -245,17 +246,23 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
 
         previous_waypoints = self._waypoint_tracker.state.current_waypoints
 
+        current_poses = np.stack(self._state.poses.values(), axis=0)
+        current_vels = np.stack(self._state.velocities.values(), axis=0)
+        current_waypoints = np.stack(self._waypoint_tracker.state.current_waypoints.values(), axis=0)
+
         # Current positions
-        r = self._state.poses[:, :2]
+        r = current_poses[:, :2] # self._state.poses[:, :2]
         # Current orientations and angular velocities
-        q = np.stack((self._state.poses[:, 2], self._state.velocities[:, 2]), axis=1)
+        # q = np.stack((self._state.poses[:, 2], self._state.velocities[:, 2]), axis=1)
+        q = np.stack((current_poses[:, 2], current_vels[:, 2]), axis=1)
         # Current rotation matrix
         R = np.array([[[np.cos(theta), -np.sin(theta)],
-                       [np.sin(theta), np.cos(theta)]] for theta in self._state.poses[:, 2]])
+                       [np.sin(theta), np.cos(theta)]] for theta in current_poses[:, 2]])
         # Desired velocities v_d
-        v_d = _calc_desired_velocities(self._waypoint_tracker.state.current_waypoints, r, self._linear_vel_magnitudes)
+        v_d = _calc_desired_velocities(current_waypoints, r, self._linear_vel_magnitudes)
         # Current velocities v
-        v = self._state.velocities[:, :2]
+        # v = self._state.velocities[:, :2]
+        v = current_vels[:, :2]
 
         # Here we do not use "fair" integrators (e.g. scipy.integrate.ode), as it was in original paper's code
         # in sake of better computational performance and Numba compatibility.
@@ -278,12 +285,14 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
         velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)
 
-        new_waypoints, is_steady = self._waypoint_tracker.update_waypoints(poses)
+        pedestrians = {i: (poses[i, :], velocities[i, :]) for i in range(self._n_pedestrians)}
+
+        self._waypoint_tracker.update_waypoints({i: poses[i, :] for i in range(self._n_pedestrians)})
         # for i, steady in enumerate(is_steady):
         #     if steady:
         #         velocities[i, :] = np.array([0., 0., 0.])
 
-        self._state = HSFMState(poses.copy(), velocities.copy(), self._waypoint_tracker.state)
+        self._state = HSFMState(pedestrians, self._waypoint_tracker.state)
 
     def reset_to_state(self, state: HSFMState):
         self._state = state
