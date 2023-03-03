@@ -222,7 +222,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         self._linear_vel_magnitudes = np.repeat(pedestrian_linear_velocity_magnitude, self._n_pedestrians)
         self._waypoint_tracker = waypoint_tracker
         if self._waypoint_tracker.state is None:
-            self._waypoint_tracker.resample_all(initial_poses)
+            self._waypoint_tracker.resample_all({i: initial_poses[i] for i in range(self._n_pedestrians)})
         self._robot_visible = robot_visible
 
         self._radii = np.repeat(PEDESTRIAN_RADIUS, self._n_pedestrians)
@@ -246,9 +246,9 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
 
         previous_waypoints = self._waypoint_tracker.state.current_waypoints
 
-        current_poses = np.stack(self._state.poses.values(), axis=0)
-        current_vels = np.stack(self._state.velocities.values(), axis=0)
-        current_waypoints = np.stack(self._waypoint_tracker.state.current_waypoints.values(), axis=0)
+        current_poses = np.stack(list(self._state.poses.values()), axis=0)
+        current_vels = np.stack(list(self._state.velocities.values()), axis=0)
+        current_waypoints = np.stack(list(self._waypoint_tracker.state.current_waypoints.values()), axis=0)
 
         # Current positions
         r = current_poses[:, :2] # self._state.poses[:, :2]

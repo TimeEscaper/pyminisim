@@ -21,14 +21,14 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.0]),
                                      initial_control=np.array([0.0, np.deg2rad(25.0)]))
 
-    # tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
+    tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
     n_pedestrians = 2
     waypoints = np.zeros((n_pedestrians, 2, 2))
     waypoints[0, :, :] = np.array([[3., 3.],
                                    [-3., -3.]])
     waypoints[1, :, :] = np.array([[-3., -3.],
                                    [3., 3.]])
-    tracker = FixedWaypointTracker(waypoints=waypoints)
+    # tracker = FixedWaypointTracker(waypoints=waypoints)
     pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
                                                      waypoint_tracker=tracker,
                                                      initial_poses=np.array([[-3., -3., 0.],

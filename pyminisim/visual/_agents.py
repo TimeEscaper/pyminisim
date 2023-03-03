@@ -59,7 +59,7 @@ class _PedestriansSkin:
         self._sprites = [_PedestrianSprite() for _ in range(n_pedestrians)]
 
     def render(self, screen, sim_state: SimulationState):
-        ped_poses = np.stack(sim_state.world.pedestrians.poses.values(), axis=0)
+        ped_poses = np.stack(list(sim_state.world.pedestrians.poses.values()), axis=0)
         pixel_poses = self._pose_converter.convert(ped_poses, _PedestriansSkin._OFFSET)
         for pixel_pose, sprite in zip(pixel_poses, self._sprites):
             sprite.render(screen, pixel_pose)
