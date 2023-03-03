@@ -10,7 +10,8 @@ class AbstractPedestriansModelState(ABC):
 
     def __init__(self,
                  pedestrians: Dict[int, Tuple[np.ndarray, np.ndarray]],
-                 waypoints_state: AbstractWaypointTrackerState):
+                 waypoints_state: Optional[AbstractWaypointTrackerState]):
+        # TODO: Move waypoint tracker state to other subclasses
         for ped_id, (pose, velocity) in pedestrians.items():
             assert pose.shape == (3,), f"Each pedestrian pose must be a 3-dim array, but {pose.shape} array was passed for pedestrian {ped_id}"
             assert velocity.shape == (3,), f"Each pedestrian velocity must be a 3-dim array, but {velocity.shape} array was passed for pedestrian {ped_id}"
@@ -26,7 +27,7 @@ class AbstractPedestriansModelState(ABC):
         return {k: v[1].copy() for k, v in self._pedestrians.items()}
 
     @property
-    def waypoints(self) -> AbstractWaypointTrackerState:
+    def waypoints(self) -> Optional[AbstractWaypointTrackerState]:
         return self._waypoints
 
 

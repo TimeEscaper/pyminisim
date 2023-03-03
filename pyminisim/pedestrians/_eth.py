@@ -9,8 +9,23 @@ from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansMod
 from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 
 
-class HSFMState(AbstractPedestriansModelState):
-    pass
+class ETHState(AbstractPedestriansModelState):
+
+    def __init__(self,
+                 pedestrians: Dict[int, Tuple[np.ndarray, np.ndarray]],
+                 current_frame: int,
+                 current_sub_step: int):
+        super(ETHState, self).__init__(pedestrians=pedestrians, waypoints_state=None)
+        self._current_frame = current_frame
+        self._current_sub_step = current_sub_step
+
+    @property
+    def current_frame(self) -> float:
+        return self._current_frame
+
+    @property
+    def current_sub_step(self) -> float:
+        return self._current_sub_step
 
 
 class ETHPedestriansRecord(AbstractPedestriansModel):
@@ -47,43 +62,45 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
 
         self._dt = dt
         self._trajectory = trajectory
-        self._current_t = 0
         self._n_peds = len(ped_ids)
-        self._n_steps = current_step
-        self._max_time = self._n_steps * ETHPedestriansRecord._RECORD_DT
-        self._step_per_gap = int(ETHPedestriansRecord._RECORD_DT // self._dt)
+        self._n_frames = current_step
+        self._steps_per_gap = int(ETHPedestriansRecord._RECORD_DT // self._dt)
 
-
-        # n_ids = len(ped_ids)
-
-        # print("ok")
+        self._state = ETHState(self._get_pedestrians_at_frame(0, 0), 0, 0)
 
     @property
     def state(self) -> AbstractPedestriansModelState:
-        pass
+        return self._state
 
     def step(self, dt: float, robot_pose: Optional[np.ndarray], robot_velocity: Optional[np.ndarray]):
-        pass
+        current_sub_step = self._state.current_sub_step + 1
+        if current_sub_step >= self._steps_per_gap:
+            current_sub_step = 0
+            current_frame = self._state.current_frame + 1
+            if current_frame >= self._n_frames:
+                current_frame = 0
+        else:
+            current_frame = self._state.current_frame
+
+        pedestrians = self._get_pedestrians_at_frame(current_frame, current_sub_step)
+        self._state = ETHState(pedestrians, current_frame, current_sub_step)
 
     def reset_to_state(self, state: AbstractPedestriansModelState):
-        pass
+        self._state = state
 
-    def _get_pedestrians_at_time(self, t: float) -> Dict[int, Tuple[np.ndarray, np.ndarray]]:
-        traj_idx = int(t // ETHPedestriansRecord._RECORD_DT)
-        offset = int(t // self._step_per_gap) - traj_idx
-
-        traj_item = self._trajectory[traj_idx]
-        traj_item_next = self._trajectory[traj_idx + 1]
+    def _get_pedestrians_at_frame(self, frame: int, sub_step: int) -> Dict[int, Tuple[np.ndarray, np.ndarray]]:
+        traj_item = self._trajectory[frame]
+        traj_item_next = self._trajectory[frame + 1]
 
         result = {}
 
         for ped_id, ped_state in traj_item.items():
             if ped_id in traj_item_next:
                 ped_state_next = traj_item_next[ped_id]
-                position = np.linspace(ped_state[:2], ped_state_next[:2], self._step_per_gap)[offset]
+                position = np.linspace(ped_state[:2], ped_state_next[:2], self._steps_per_gap)[sub_step]
             else:
-                delta_t = t - traj_idx * ETHPedestriansRecord._RECORD_DT
-                position = ped_id[:2] + ped_id[3:5] * delta_t
+                delta_t = sub_step * self._dt
+                position = ped_state[:2] + ped_state[3:5] * delta_t
             pose = np.array([position[0], position[1], 0.])
             velocity = np.array(ped_state[3:])
             result[ped_id] = (pose, velocity)
