@@ -32,8 +32,11 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
 
     _RECORD_DT = 0.4
 
+    _WORLD_BL = np.array([-10.09475671, -10.94118944])
+    _WORLD_TR = np.array([19.63625293, 10.36784148])
+
     def __init__(self, dt: float, start_frame: int = 0):
-        with open("/home/sibirsky/datasets/ETH/ewap_dataset/seq_eth/obsmat.txt") as f:
+        with open("/storage/datasets/eth/ewap_dataset/seq_eth/obsmat.txt") as f:
             lines = f.readlines()
 
         trajectory = []
@@ -49,6 +52,8 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
             pos_y = float(elements[4])
             v_x = float(elements[5])
             v_y = float(elements[7])
+
+            pos_x, pos_y = self._transform_pose(pos_x, pos_y)
 
             if frame != current_frame:
                 current_step += 1
@@ -106,3 +111,23 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
             result[ped_id] = (pose, velocity)
 
         return result
+
+    def _transform_pose(self, pose_x: float, pose_y: float) -> Tuple[float, float]:
+        pose_x = pose_x - ETHPedestriansRecord._WORLD_BL[0]
+        pose_y = pose_y - ETHPedestriansRecord._WORLD_BL[1]
+
+        center = (ETHPedestriansRecord._WORLD_TR - ETHPedestriansRecord._WORLD_BL) / 2
+        pose_x = pose_x - center[0]
+        pose_y = pose_y - center[1]
+        # pose_x = pose_x - ETHPedestriansRecord._WORLD_TL[0]
+        # pose_y = pose_y - ETHPedestriansRecord._WORLD_TL[1]
+        # pose_y = (ETHPedestriansRecord._WORLD_BR[1] - ETHPedestriansRecord._WORLD_TL[1]) - pose_y
+        #
+        # center_point = (ETHPedestriansRecord._WORLD_BR - ETHPedestriansRecord._WORLD_TL) / 2
+        #
+        # pose_x = pose_x - center_point[0]
+        # pose_y = pose_y - center_point[1]
+
+        return pose_x, pose_y
+
+
