@@ -33,6 +33,7 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
 
     _RECORD_DT = 0.4
 
+    # Centers of the scenes are estimated using the homography matrices available for the datasets
     _CENTER_ETH = (3.86457727, 3.82923192)
     _CENTER_HOTEL = (-0.21777709, -3.30031001)
 
@@ -68,9 +69,6 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
 
             theta = np.arctan2(v_y, v_x)
 
-            # if pedestrian_id not in (5,):
-            #     continue
-
             if frame != current_frame:
                 current_step += 1
                 current_frame = frame
@@ -81,13 +79,16 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
             if pedestrian_id not in ped_ids:
                 ped_ids.append(pedestrian_id)
 
+        assert start_frame < len(trajectory), \
+            f"start_frame must be less than the total number of frames which is {len(trajectory)}"
+
         self._dt = dt
         self._trajectory = trajectory
         self._n_peds = len(ped_ids)
         self._n_frames = current_step
         self._steps_per_gap = int(ETHPedestriansRecord._RECORD_DT // self._dt)
 
-        self._state = ETHState(self._get_pedestrians_at_frame(0, 0), 0, 0)
+        self._state = ETHState(self._get_pedestrians_at_frame(0, 0), start_frame, 0)
 
     @property
     def state(self) -> AbstractPedestriansModelState:
