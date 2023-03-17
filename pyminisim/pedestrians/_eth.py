@@ -33,7 +33,6 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
 
     _RECORD_DT = 0.4
 
-    # Centers of the scenes are estimated using the homography matrices available for the datasets
     _CENTER_ETH = (3.86457727, 3.82923192)
     _CENTER_HOTEL = (-0.21777709, -3.30031001)
 
@@ -69,6 +68,9 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
 
             theta = np.arctan2(v_y, v_x)
 
+            # if pedestrian_id not in (5,):
+            #     continue
+
             if frame != current_frame:
                 current_step += 1
                 current_frame = frame
@@ -80,7 +82,7 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
                 ped_ids.append(pedestrian_id)
 
         assert start_frame < len(trajectory), \
-            f"start_frame must be less than the total number of frames which is {len(trajectory)}"
+            f"start_frame must be less than number of frames in sequence which is {len(trajectory)}"
 
         self._dt = dt
         self._trajectory = trajectory
