@@ -1,12 +1,10 @@
-from dataclasses import dataclass
-from typing import Tuple, Optional, Dict
-from pathlib import Path
-
+import pkg_resources
 import numpy as np
-from numba import njit
 
-from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansModel, AbstractWaypointTracker
-from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
+from typing import Tuple, Optional, Dict
+
+from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansModel
+from pyminisim.util import wrap_angle, angle_linspace
 
 
 class ETHState(AbstractPedestriansModelState):
@@ -30,10 +28,24 @@ class ETHState(AbstractPedestriansModelState):
 
 class ETHPedestriansRecord(AbstractPedestriansModel):
 
+    SEQUENCE_ETH = "eth"
+    SEQUENCE_HOTEL = "hotel"
+
     _RECORD_DT = 0.4
 
-    def __init__(self, dt: float, start_frame: int = 0):
-        with open("/home/sibirsky/datasets/ETH/ewap_dataset/seq_eth/obsmat.txt") as f:
+    _CENTER_ETH = (3.86457727, 3.82923192)
+    _CENTER_HOTEL = (-0.21777709, -3.30031001)
+
+    def __init__(self, sequence: str, dt: float, start_frame: int = 0):
+        if sequence == ETHPedestriansRecord.SEQUENCE_ETH:
+            world_center = ETHPedestriansRecord._CENTER_ETH
+        elif sequence == ETHPedestriansRecord.SEQUENCE_HOTEL:
+            world_center = ETHPedestriansRecord._CENTER_HOTEL
+        else:
+            raise ValueError(f"Unknown sequence name {sequence}, available options: "
+                             f"{ETHPedestriansRecord.SEQUENCE_ETH} and {ETHPedestriansRecord.SEQUENCE_HOTEL}")
+
+        with open(pkg_resources.resource_filename(f"pyminisim.pedestrians", f"assets/obsmat_{sequence}.txt")) as f:
             lines = f.readlines()
 
         trajectory = []
@@ -50,12 +62,21 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
             v_x = float(elements[5])
             v_y = float(elements[7])
 
+            pos_x = -(pos_x - world_center[0])
+            pos_y = pos_y - world_center[1]
+            v_x = -v_x
+
+            theta = np.arctan2(v_y, v_x)
+
+            # if pedestrian_id not in (5,):
+            #     continue
+
             if frame != current_frame:
                 current_step += 1
                 current_frame = frame
-                trajectory.append({pedestrian_id: np.array([pos_x, pos_y, 0., v_x, v_y, 0.])})
+                trajectory.append({pedestrian_id: np.array([pos_x, pos_y, theta, v_x, v_y, 0.])})
             else:
-                trajectory[current_step][pedestrian_id] = np.array([pos_x, pos_y, 0., v_x, v_y, 0.])
+                trajectory[current_step][pedestrian_id] = np.array([pos_x, pos_y, theta, v_x, v_y, 0.])
 
             if pedestrian_id not in ped_ids:
                 ped_ids.append(pedestrian_id)
@@ -98,11 +119,16 @@ class ETHPedestriansRecord(AbstractPedestriansModel):
             if ped_id in traj_item_next:
                 ped_state_next = traj_item_next[ped_id]
                 position = np.linspace(ped_state[:2], ped_state_next[:2], self._steps_per_gap)[sub_step]
+                orientation = angle_linspace(ped_state[2], ped_state_next[2], self._steps_per_gap)[sub_step]
+                pose = np.array([position[0], position[1], orientation])
+                angular_vel = (wrap_angle(ped_state_next[2] - ped_state[2])) / ETHPedestriansRecord._RECORD_DT
             else:
                 delta_t = sub_step * self._dt
                 position = ped_state[:2] + ped_state[3:5] * delta_t
-            pose = np.array([position[0], position[1], 0.])
-            velocity = np.array(ped_state[3:])
+                orientation = ped_state[2]
+                pose = np.array([position[0], position[1], orientation])
+                angular_vel = 0.
+            velocity = np.array([ped_state[3], ped_state[4], angular_vel])
             result[ped_id] = (pose, velocity)
 
         return result
