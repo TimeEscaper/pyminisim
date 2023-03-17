@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 import numpy as np
 
@@ -9,52 +9,29 @@ from ._waypoints import AbstractWaypointTrackerState, AbstractWaypointTracker
 class AbstractPedestriansModelState(ABC):
 
     def __init__(self,
-                 poses: np.ndarray,
-                 velocities: np.ndarray,
-                 waypoints_state: AbstractWaypointTrackerState):
-        assert len(poses.shape) == 2 and poses.shape[1] == 3, f"Given {len(poses.shape)=} and {poses.shape[1]=}"
-        assert len(velocities.shape) == 2  and velocities.shape[1] == 3, f"Given {len(velocities.shape)=} and {velocities.shape[1]=}"
-        assert poses.shape[0] == velocities.shape[0]
-        self._poses = poses
-        self._velocities = velocities
+                 pedestrians: Dict[int, Tuple[np.ndarray, np.ndarray]],
+                 waypoints_state: Optional[AbstractWaypointTrackerState]):
+        # TODO: Move waypoint tracker state to other subclasses
+        for ped_id, (pose, velocity) in pedestrians.items():
+            assert pose.shape == (3,), f"Each pedestrian pose must be a 3-dim array, but {pose.shape} array was passed for pedestrian {ped_id}"
+            assert velocity.shape == (3,), f"Each pedestrian velocity must be a 3-dim array, but {velocity.shape} array was passed for pedestrian {ped_id}"
+        self._pedestrians = pedestrians
         self._waypoints = waypoints_state
 
     @property
-    def poses(self) -> np.ndarray:
-        return self._poses
+    def poses(self) -> Dict[int, np.ndarray]:
+        return {k: v[0].copy() for k, v in self._pedestrians.items()}
 
     @property
-    def velocities(self) -> np.ndarray:
-        return self._velocities
+    def velocities(self) -> Dict[int, np.ndarray]:
+        return {k: v[1].copy() for k, v in self._pedestrians.items()}
 
     @property
-    def waypoints(self) -> AbstractWaypointTrackerState:
+    def waypoints(self) -> Optional[AbstractWaypointTrackerState]:
         return self._waypoints
 
 
 class AbstractPedestriansModel(ABC):
-
-    # def __init__(self,
-    #              initial_poses: np.ndarray,
-    #              initial_velocities: np.ndarray,
-    #              waypoint_tracker: AbstractWaypointTracker):
-    #     self._poses = initial_poses
-    #     self._velocities = initial_velocities
-    #     self._waypoint_tracker = waypoint_tracker
-    #
-    #     if self._waypoint_tracker.current_waypoints is None:
-    #         self._waypoint_tracker.resample_all(initial_poses)
-
-    # def reset(self,
-    #           initial_poses: np.ndarray,
-    #           initial_velocities: np.ndarray,
-    #           initial_waypoints: Optional[np.ndarray]):
-    #     self._poses = initial_poses
-    #     self._velocities = initial_velocities
-    #     if initial_waypoints is None:
-    #         self._waypoint_tracker.resample_all(self._poses)
-    #     else:
-    #         self._waypoint_tracker.set_waypoints(initial_waypoints)
 
     @property
     @abstractmethod

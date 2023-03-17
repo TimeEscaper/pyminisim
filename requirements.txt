@@ -3,3 +3,5 @@ numpy
 pillow
 numba==0.54.1
 scipy
+Cython
+git+https://github.com/sybrenstuvel/Python-RVO2.git

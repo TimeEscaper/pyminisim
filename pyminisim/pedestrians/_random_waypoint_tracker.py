@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Dict
 
 import numpy as np
 
@@ -8,16 +8,13 @@ from pyminisim.core import AbstractWaypointTrackerState, AbstractWaypointTracker
 class RandomWaypointTrackerState(AbstractWaypointTrackerState):
 
     def __init__(self,
-                 current_waypoints: np.ndarray,
-                 next_waypoints: np.ndarray):
-        assert len(current_waypoints.shape) == 2 and len(next_waypoints.shape) == 3
-        assert current_waypoints.shape[1] == 2 and next_waypoints.shape[2] == 2
-        assert current_waypoints.shape[0] == next_waypoints.shape[0]
+                 current_waypoints: Dict[int, np.ndarray],
+                 next_waypoints: Dict[int, np.ndarray]):
         super(RandomWaypointTrackerState, self).__init__(current_waypoints)
         self._next_waypoints = next_waypoints
 
     @property
-    def next_waypoints(self) -> np.ndarray:
+    def next_waypoints(self) -> Dict[int, np.ndarray]:
         return self._next_waypoints
 
 
@@ -43,37 +40,55 @@ class RandomWaypointTracker(AbstractWaypointTracker):
     def state(self) -> RandomWaypointTrackerState:
         return self._state
 
-    def resample_all(self, agents_poses: np.ndarray) -> np.ndarray:
-        assert agents_poses.shape[1] == 3
-        next_waypoints = np.zeros((agents_poses.shape[0], self._n_next_waypoints + 1, 2))
+    def resample_all(self, agents_poses: Dict[int, np.ndarray]) -> Dict[int, np.ndarray]:
+
+        current_waypoints_dict = {}
+        next_waypoints_dict = {}
+
+        agents_poses_stack = np.stack(agents_poses.values(), axis=0)
+
+        next_waypoints = np.zeros((agents_poses_stack.shape[0], self._n_next_waypoints + 1, 2))
         next_waypoints[:, 0, :] = np.stack([self._sample_single_waypoint(p, self._min_sample_distance)
-                                            for p in agents_poses[:, :2]])
+                                            for p in agents_poses_stack[:, :2]])
         for i in range(1, self._n_next_waypoints + 1):
             next_waypoints[:, i, :] = np.stack([self._sample_single_waypoint(p, self._min_sample_distance)
                                                 for p in next_waypoints[:, i - 1, :]])
         current_waypoints = next_waypoints[:, 0, :]
         next_waypoints = next_waypoints[:, 1:, :]
-        self._state = RandomWaypointTrackerState(current_waypoints, next_waypoints)
-        return current_waypoints.copy()
 
-    def update_waypoints(self, agents_poses: np.ndarray) -> Tuple[np.ndarray, List[bool]]:
+        for i, agent_id in enumerate(agents_poses.keys()):
+            current_waypoints_dict[agent_id] = current_waypoints[i, :]
+            next_waypoints_dict[agent_id] = next_waypoints[i, :, :]
+
+        self._state = RandomWaypointTrackerState(current_waypoints_dict, next_waypoints_dict)
+        return current_waypoints_dict
+
+    def update_waypoints(self, agents_poses: Dict[int, np.ndarray]) -> Dict[int, Tuple[np.ndarray, bool]]:
         if self._state is None:
             raise RuntimeError("Waypoint tracker is not initialized")
-        assert agents_poses.shape[0] == self._state.current_waypoints.shape[0]
+        assert agents_poses.keys() == self._state.current_waypoints.keys()
 
-        current_waypoints = self._state.current_waypoints.copy()
-        next_waypoints = self._state.next_waypoints.copy()
-        for i in range(agents_poses.shape[0]):
-            if not self._waypoint_reached(current_waypoints[i], agents_poses[i, :2]):
-                continue
-            current_waypoints[i, :] = next_waypoints[i, 0, :].copy()
-            new_waypoint = self._sample_single_waypoint(next_waypoints[i, -1, :], self._min_sample_distance)
-            next_waypoints[i, :-1, :] = next_waypoints[i, 1:, :]
-            next_waypoints[i, -1, :] = new_waypoint
+        current_waypoints = self._state.current_waypoints
+        next_waypoints = self._state.next_waypoints
 
-        self._state = RandomWaypointTrackerState(current_waypoints, next_waypoints)
+        current_waypoints_new = {}
+        next_waypoints_new = {}
 
-        return current_waypoints.copy(), [False for _ in range(agents_poses.shape[0])]
+        for i, agent_pose in agents_poses.items():
+            if not self._waypoint_reached(current_waypoints[i], agent_pose[:2]):
+                current_waypoints_new[i] = current_waypoints[i].copy()
+                next_waypoints_new[i] = next_waypoints[i].copy()
+            else:
+                current_waypoints_new[i] = next_waypoints[i][0, :]
+                next_waypoints_updated = np.zeros_like(next_waypoints[i])
+                next_waypoints_updated[:-1, :] = next_waypoints[i][1:, :]
+                next_waypoints_updated[-1, :] = self._sample_single_waypoint(
+                    next_waypoints[i][-1, :], self._min_sample_distance)
+                next_waypoints_new[i] = next_waypoints_updated
+
+        self._state = RandomWaypointTrackerState(current_waypoints_new, next_waypoints_new)
+
+        return {k: (v.copy(), False) for k, v in current_waypoints_new.items()}
 
     def reset_to_state(self, state: RandomWaypointTrackerState):
         self._state = state

@@ -45,8 +45,7 @@ class Renderer:
         self._screen = pygame.display.set_mode(screen_size)
 
         self._robot = _RobotSkin(self._vis_params) if simulation.current_state.world.robot is not None else None
-        self._pedestrians = _PedestriansSkin(
-            simulation.current_state.world.pedestrians.poses.shape[0], self._vis_params) \
+        self._pedestrians = _PedestriansSkin(self._vis_params) \
             if simulation.current_state.world.pedestrians is not None else None
 
         # TODO: Decouple sensors visualization

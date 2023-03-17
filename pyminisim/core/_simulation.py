@@ -137,8 +137,8 @@ class Simulation:
     def _get_world_state(self) -> WorldState:
         if self._robot_model is not None:
             if self._pedestrians_model is not None:
-                collisions = [i for i, e in enumerate(self._pedestrians_model.state.poses)
-                              if np.linalg.norm(self._robot_model.state.pose[:2] - e[:2])
+                collisions = [k for k, v in self._pedestrians_model.state.poses.items()
+                              if np.linalg.norm(self._robot_model.state.pose[:2] - v[:2])
                               < (ROBOT_RADIUS + PEDESTRIAN_RADIUS)]
             else:
                 collisions = None

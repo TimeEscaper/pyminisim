@@ -13,9 +13,7 @@ Current status is *version zero proof-of-concept*. Hope that we will continue ac
 ### Roadmap
 * Documentation
 * Support of the maps and obstacles (now only plain environments without obstacles are supported)
-* More sensors simulation (e.g. range sensor)
-* Sensors and motion noise modeling support
-* More pedestrians behaviour models (e.g. Extended Social Force Model, Inverse Reinforcement  Learning based approaches)
+* Motion noise modeling support
 * Keyboard control for the robot
 
 ---
@@ -24,7 +22,7 @@ Current status is *version zero proof-of-concept*. Hope that we will continue ac
 
 Note: current diagram display not only current architecture, but also concepts for the future updates (see roadmap).
 
-<img src="./.img/pyminisim_architecture.png" alt="PyMiniSim architecture">
+<img src="./.img/pyminisim_architecture.jpg" alt="PyMiniSim architecture">
 
 ---
 
@@ -32,3 +30,5 @@ Note: current diagram display not only current architecture, but also concepts f
 
 See [examples/](./examples) directory. Available examples:
 * [examples/basic.py](examples/basic.py): Basic example of simulation with Headed Social Force model and simple pedestrian detector
+* [examples/mpc.py](examples/mpc.py): An example of simple Model Predictive Control based navigation with [do-mpc](https://github.com/do-mpc/do-mpc) library
+* [examples/orca.py](examples/orca.py): Basic example with the usage of the ORCA model for pedestrians modeling
