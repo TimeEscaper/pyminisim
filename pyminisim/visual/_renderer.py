@@ -11,9 +11,9 @@ from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarS
     Covariance2dDrawing, Covariance2dDrawingRenderer
 from pyminisim.visual.util import PoseConverter
 from pyminisim.sensors import PedestrianDetector, LidarSensor
-from pyminisim.world_map import EmptyWorld, CirclesWorld
+from pyminisim.world_map import EmptyWorld, CirclesWorld, LinesWorld
 from ._agents import _RobotSkin, _PedestriansSkin
-from ._maps import EmptyWorldSkin, CirclesWorldSkin
+from ._maps import EmptyWorldSkin, CirclesWorldSkin, LinesWorldSkin
 
 
 class _RendererThread(threading.Thread):
@@ -59,6 +59,8 @@ class Renderer:
         # TODO: Decouple world map visualization
         if isinstance(self._sim.world_map, CirclesWorld):
             self._map = CirclesWorldSkin(self._sim.world_map, self._vis_params)
+        elif isinstance(self._sim.world_map, LinesWorld):
+            self._map = LinesWorldSkin(self._sim.world_map, self._vis_params)
         else:
             self._map = EmptyWorldSkin()
 
