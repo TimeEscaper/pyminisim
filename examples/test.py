@@ -18,6 +18,10 @@ def create_sim() -> Tuple[pms.core.Simulation, pms.visual.Renderer]:
     world = pms.world_map.LinesWorld(lines=np.array([[[2., -2],
                                                       [2., 2]],
                                                      [[-2, -2],
+                                                      [-2, 2]],
+                                                     [[2., -2],
+                                                      [-2, -2]],
+                                                     [[2, 2],
                                                       [-2, 2]]]))
     # world = pms.world_map.LinesWorld(lines=np.array([[[2., 0.],
     #                                                   [2., 3.]],
@@ -29,7 +33,7 @@ def create_sim() -> Tuple[pms.core.Simulation, pms.visual.Renderer]:
                               world_map=world,
                               robot_model=robot_model,
                               pedestrians_model=None,
-                              sensors=[])
+                              sensors=sensors)
     renderer = pms.visual.Renderer(simulation=sim,
                                    resolution=80.0,
                                    screen_size=(500, 500))

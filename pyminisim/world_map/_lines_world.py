@@ -42,7 +42,7 @@ class LinesWorld(AbstractStaticWorldMap):
         ab = lines[:, 1, :] - lines[:, 0, :]  # (n_lines, 2)
         ap = point - lines[:, np.newaxis, 0, :]  # (n_lines, n_points, 2)
         proj = np.einsum("ijk,ik->ij", ap, ab)  # (n_lines, n_points)
-        d = proj / (np.linalg.norm(ab) ** 2)  # (n_lines, n_points)
+        d = proj / (np.linalg.norm(ab, axis=1) ** 2)[:, np.newaxis]  # (n_lines, n_points)
         d = np.clip(d, 0., 1.)
         closest_points = lines[:, np.newaxis, 0, :] + \
                          ab[:, np.newaxis, :] * d[:, :, np.newaxis]  # (n_lines, n_points, 2)
