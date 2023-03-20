@@ -32,6 +32,10 @@ class AbstractWorldMap(ABC):
     def is_occupied(self, point: np.ndarray) -> Union[bool, np.ndarray]:
         raise NotImplementedError()
 
+    @abstractmethod
+    def circle_collision(self, circle: np.ndarray) -> Union[bool, np.ndarray]:
+        raise NotImplementedError()
+
 
 class AbstractStaticWorldMap(AbstractWorldMap, ABC):
 

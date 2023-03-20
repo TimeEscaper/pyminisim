@@ -74,6 +74,24 @@ class LinesWorld(AbstractStaticWorldMap):
         result = min_dists > self._line_width / 2
         return result
 
+    def circle_collision(self, circle: np.ndarray) -> Union[bool, np.ndarray]:
+        # Based on https://www.baeldung.com/cs/circle-line-segment-collision-detection
+        assert circle.shape == (3,) or (len(circle.shape) == 2 and circle.shape[1] == 3)
+        if circle.shape == (3,):
+            is_single = True
+            circle = circle[np.newaxis, :]
+        else:
+            is_single = False
+
+        o = circle[:, :2]  # (n_circles, 2)
+        p = self._state.lines[:, 0, :]  # (n_lines, 2)
+        q = self._state.lines[:, 1, :]  # (n_lines, 2)
+
+        dist_p = np.linalg.norm(o - p[:, np.newaxis, :], axis=-1)  # (n_lines, n_circles)
+        dist_q = np.linalg.norm(o - q[:, np.newaxis, :], axis=-1)  # (n_lines, n_circles)
+        dist = np.stack((dist_p, dist_q), axis=-1)
+        max_dist = np.max(dist, axis=-1)  # (n_lines, n_circles)
+
     @property
     def lines(self) -> np.ndarray:
         return self._state.lines.copy()
