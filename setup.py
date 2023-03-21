@@ -11,7 +11,7 @@ setup(
         'pyminisim.pedestrians.assets',
         'pyminisim.robot',
         'pyminisim.sensors',
-        'pyminisim.util'
+        'pyminisim.util',
         'pyminisim.visual',
         'pyminisim.visual.assets',
         'pyminisim.visual.util'
@@ -22,8 +22,8 @@ setup(
         'pillow',
         'numba',
         'scipy',
-        'Cython',
-        'git+https://github.com/sybrenstuvel/Python-RVO2.git'
+        'Cython'
+        # 'git+https://github.com/sybrenstuvel/Python-RVO2.git'
     ],
     extras_require={
         'test': [
