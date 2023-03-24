@@ -32,11 +32,14 @@ class CircleDrawing(AbstractDrawing):
                  radius: float,
                  color: Tuple[int, int, int],
                  width: float = 0.):
-        super(CircleDrawing, self).__init__()
-        if not isinstance(center, np.ndarray):
-            self._center = np.array(center)
+        center = np.array(center)
+        if len(center.shape) == 1:
+            assert center.shape == (2,), f"Center must have shape (2,), {center.shape} is given"
         else:
-            self._center = center
+            assert len(center.shape) == 2 and center.shape[1:] == (2,), f"Center must have shape (n, 2), " \
+                                                                        f"{center.shape} is given"
+        super(CircleDrawing, self).__init__()
+        self._center = center.copy()
         self._radius = radius
         self._color = color
         self._width = width
@@ -47,7 +50,7 @@ class CircleDrawing(AbstractDrawing):
 
     @property
     def center(self) -> np.ndarray:
-        return self._center.copy()
+        return self._center
 
     @property
     def radius(self) -> float:
@@ -63,7 +66,6 @@ class CircleDrawing(AbstractDrawing):
 
 
 class Covariance2dDrawing(AbstractDrawing):
-
     NAME = "covariance_2d"
 
     def __init__(self,
@@ -72,8 +74,15 @@ class Covariance2dDrawing(AbstractDrawing):
                  color: Tuple[int, int, int],
                  width: float,
                  n_sigma: int = 1):
+        if len(mean.shape) == 1:
+            assert mean.shape == (2,) and covariance.shape == (2, 2), \
+                f"Mean and covariance must have shapes (2,) and (2, 2), {mean.shape} and {covariance.shape} are given"
+        else:
+            assert len(mean.shape) == 2 and len(covariance.shape) == 3 and mean.shape[0] == covariance.shape[0] \
+                   and covariance.shape[1:] == (2, 2), \
+                f"Mean and covariance must have shapes (n, 2) and (n, 2, 2), " \
+                f"{mean.shape} and {covariance.shape} are given"
         super(Covariance2dDrawing, self).__init__()
-        assert mean.shape == (2,) and covariance.shape == (2, 2)
         self._mean = mean.copy()
         self._covariance = covariance.copy()
         self._color = color
@@ -86,11 +95,11 @@ class Covariance2dDrawing(AbstractDrawing):
 
     @property
     def mean(self) -> np.ndarray:
-        return self._mean.copy()
+        return self._mean
 
     @property
     def covariance(self) -> np.ndarray:
-        return self._covariance.copy()
+        return self._covariance
 
     @property
     def color(self) -> Tuple[int, int, int]:
@@ -112,17 +121,21 @@ class CircleDrawingRenderer(AbstractDrawingRenderer):
                  vis_params: VisualizationParams):
         # TODO: Drawing type assertions
         pose_converter = PoseConverter(vis_params)
-        self._pixel_center = pose_converter.convert(drawing.center)
+        center = drawing.center
+        if len(center.shape) == 1:
+            center = center[np.newaxis, :]
+        self._pixel_centers = pose_converter.convert(center)
         self._pixel_radius = int(drawing.radius * vis_params.resolution)
         self._pixel_width = int(drawing.width * vis_params.resolution)
         self._color = drawing.color
 
     def render(self, screen, sim_state: SimulationState):
-        pygame.draw.circle(screen,
-                           self._color,
-                           self._pixel_center,
-                           self._pixel_radius,
-                           self._pixel_width)
+        for center in self._pixel_centers:
+            pygame.draw.circle(screen,
+                               self._color,
+                               center,
+                               self._pixel_radius,
+                               self._pixel_width)
 
 
 class Covariance2dDrawingRenderer(AbstractDrawingRenderer):
@@ -133,31 +146,45 @@ class Covariance2dDrawingRenderer(AbstractDrawingRenderer):
         # TODO: Drawing type assertions
         pose_converter = PoseConverter(vis_params)
 
-        lambdas, es = np.linalg.eig(drawing.covariance)
-        lambdas = np.sqrt(lambdas)
+        means = drawing.mean
+        covariances = drawing.covariance
+        if len(means.shape) == 1:
+            means = means[np.newaxis, :]
+            covariances = covariances[np.newaxis, :, :]
 
-        top_left = np.array(drawing.mean)
-        top_left = pose_converter.convert(top_left)
-        half_width = int(drawing.n_sigma * lambdas[1] * vis_params.resolution)
-        half_height = int(drawing.n_sigma * lambdas[0] * vis_params.resolution)
+        self._surfaces = []
+        self._centers = []
 
-        rect_width = 2 * half_width
-        rect_height = 2 * half_height
-        angle = -np.degrees(np.arctan2(*es[:, 0][::-1]))
+        for mean, covariance in zip(means, covariances):
+            lambdas, es = np.linalg.eig(covariance)
+            lambdas = np.sqrt(lambdas)
 
-        rect = (0, 0, rect_width, rect_height)
-        thickness = int(vis_params.resolution * drawing.width)
+            top_left = np.array(mean)
+            top_left = pose_converter.convert(top_left)
+            half_width = int(drawing.n_sigma * lambdas[1] * vis_params.resolution)
+            half_height = int(drawing.n_sigma * lambdas[0] * vis_params.resolution)
 
-        surface = pygame.Surface((rect_width,
-                                  rect_height),
-                                 pygame.SRCALPHA, 32)
-        surface = surface.convert_alpha()
-        ellipse = pygame.draw.ellipse(surface, drawing.color, rect, thickness)
-        self._surface = pygame.transform.rotate(surface, angle)
+            rect_width = 2 * half_width
+            rect_height = 2 * half_height
+            angle = -np.degrees(np.arctan2(*es[:, 0][::-1]))
 
-        rect_center = self._surface.get_rect().center
-        self._center = (top_left[0] - rect_center[0],
-                        top_left[1] - rect_center[1])
+            rect = (0, 0, rect_width, rect_height)
+            thickness = int(vis_params.resolution * drawing.width)
+
+            surface = pygame.Surface((rect_width,
+                                      rect_height),
+                                     pygame.SRCALPHA, 32)
+            surface = surface.convert_alpha()
+            ellipse = pygame.draw.ellipse(surface, drawing.color, rect, thickness)
+            surface = pygame.transform.rotate(surface, angle)
+
+            rect_center = surface.get_rect().center
+            center = (top_left[0] - rect_center[0],
+                      top_left[1] - rect_center[1])
+
+            self._surfaces.append(surface)
+            self._centers.append(center)
 
     def render(self, screen, sim_state: SimulationState):
-        screen.blit(self._surface, self._center)
+        for surface, center in zip(self._surfaces, self._centers):
+            screen.blit(surface, center)
