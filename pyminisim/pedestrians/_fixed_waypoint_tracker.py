@@ -27,9 +27,11 @@ class FixedWaypointTracker(AbstractWaypointTracker):
 
     def __init__(self,
                  waypoints: Union[Dict[int, np.ndarray], np.ndarray],
-                 reach_distance=0.3):
+                 reach_distance=0.3,
+                 loop: bool = False):
         super(FixedWaypointTracker, self).__init__()
         self._reach_distance = reach_distance
+        self._loop = loop
         if isinstance(waypoints, np.ndarray):
             assert len(waypoints.shape) == 3 and waypoints.shape[2] == 2, \
                 f"Waypoints must have shape of (n_pedestrians, n_points, 2), the {waypoints.shape} array is passed"
@@ -43,11 +45,9 @@ class FixedWaypointTracker(AbstractWaypointTracker):
 
         self._current_indices = {k: 0 for k in self._all_waypoints.keys()}
 
-        self._state = FixedWaypointTrackerState(self._get_current_waypoints(), self._current_indices)
-
     @property
     def state(self) -> FixedWaypointTrackerState:
-        return self._state
+        return FixedWaypointTrackerState(self._get_current_waypoints(), self._current_indices)
 
     def resample_all(self, agents_poses: Dict[int, np.ndarray]) -> Dict[int, np.ndarray]:
         return self._get_current_waypoints()
@@ -62,9 +62,13 @@ class FixedWaypointTracker(AbstractWaypointTracker):
                 new_index = self._current_indices[agent_id] + 1
                 is_steady = False
                 if new_index >= self._all_waypoints[agent_id].shape[0]:
-                    new_index = self._all_waypoints[agent_id].shape[0] - 1
-                    is_steady = True
+                    if self._loop:
+                        new_index = 0
+                    else:
+                        new_index = self._all_waypoints[agent_id].shape[0] - 1
+                        is_steady = True
                 new_waypoint = self._all_waypoints[agent_id][new_index]
+                self._current_indices[agent_id] = new_index
                 result[agent_id] = (new_waypoint, is_steady)
 
         return result

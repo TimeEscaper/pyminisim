@@ -247,6 +247,9 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         elif robot_velocity is None:
             assert robot_pose is None
 
+        poses_backup = self._state.poses
+        vels_backup = self._state.velocities
+
         current_poses = np.stack(list(self._state.poses.values()), axis=0)
         current_vels = np.stack(list(self._state.velocities.values()), axis=0)
         current_waypoints = np.stack(list(self._waypoint_tracker.state.current_waypoints.values()), axis=0)
@@ -289,7 +292,10 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
 
         pedestrians = {i: (poses[i, :], velocities[i, :]) for i in range(self._n_pedestrians)}
 
-        self._waypoint_tracker.update_waypoints({i: poses[i, :] for i in range(self._n_pedestrians)})
+        waypoints_update = self._waypoint_tracker.update_waypoints({i: poses[i, :] for i in range(self._n_pedestrians)})
+        for k, v in waypoints_update.items():
+            if v[1]:
+                pedestrians[k] = (poses_backup[k].copy(), np.zeros_like(vels_backup[k]))
 
         self._state = HSFMState(pedestrians, self._waypoint_tracker.state)
 
