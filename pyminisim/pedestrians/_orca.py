@@ -145,8 +145,8 @@ class OptimalReciprocalCollisionAvoidance(AbstractPedestriansModel):
 
         self._memory_direction = poses[:, 2]
 
-        if self._waypoint_tracker.state is None:
-            self._waypoint_tracker.resample_all({i: poses[i] for i in range(self._n_pedestrians)})
+        if self._waypoint_tracker.state is not None:
+            self._waypoint_tracker.update_waypoints({i: poses[i, :] for i in range(self._n_pedestrians)})
 
         self._state = ORCAState({i: (poses[i], velocities[i])
                                  for i in range(self._n_pedestrians)}, self._waypoint_tracker.state)
