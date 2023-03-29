@@ -36,19 +36,22 @@ def create_sim() -> Tuple[Simulation, Renderer]:
 
     #tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
     n_pedestrians = 7
-    waypoints = np.zeros((n_pedestrians, 2, 2))
     waypoints = np.array(pedestrians_goals)
-    tracker = FixedWaypointTracker(waypoints=waypoints)
+    # Provide initial states of the pedestrians according to the amount specified in total_peds, [x, y, phi], [m, m, rad]
+    initial_poses = np.array([(4, 0, 0),
+                              (0, -4, 0),
+                              (0, 4, 0),
+                              (2.82, 2.82, 0),
+                              (-2.82, -2.82, 0),
+                              (2.82, -2.82, 0),
+                              (-2.82, 2.82, 0)])
+    tracker = FixedWaypointTracker(initial_positions=initial_poses[:, :2],
+                                   waypoints=waypoints,
+                                   loop=True)
     pedestrians_model = OptimalReciprocalCollisionAvoidance(0.01, 
                                                             tracker,
                                                             n_pedestrians,
-                                                            initial_poses=np.array([( 4,  0, 0),                            # Provide initial states of the pedestrians according to the amount specified in total_peds, [x, y, phi], [m, m, rad]
-                                                                                    ( 0, -4, 0),
-                                                                                    ( 0,  4, 0),
-                                                                                    ( 2.82,  2.82, 0),
-                                                                                    (-2.82, -2.82, 0),
-                                                                                    ( 2.82, -2.82, 0),
-                                                                                    (-2.82,  2.82, 0)]))
+                                                            initial_poses=initial_poses)
     """
     pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
                                                      waypoint_tracker=tracker,

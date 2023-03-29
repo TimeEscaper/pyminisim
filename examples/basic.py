@@ -28,7 +28,6 @@ def create_sim() -> Tuple[Simulation, Renderer]:
                                    [-3., -3.]])
     waypoints[1, :, :] = np.array([[-3., -3.],
                                    [3., 3.]])
-    # tracker = FixedWaypointTracker(waypoints=waypoints)
     pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
                                                      waypoint_tracker=tracker,
                                                      initial_poses=np.array([[-3., -3., 0.],
