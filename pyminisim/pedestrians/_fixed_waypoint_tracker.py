@@ -26,6 +26,7 @@ class FixedWaypointTrackerState(AbstractWaypointTrackerState):
 class FixedWaypointTracker(AbstractWaypointTracker):
 
     def __init__(self,
+                 initial_positions: Union[Dict[int, np.ndarray], np.ndarray],
                  waypoints: Union[Dict[int, np.ndarray], np.ndarray],
                  reach_distance=0.3,
                  loop: bool = False):
@@ -33,17 +34,29 @@ class FixedWaypointTracker(AbstractWaypointTracker):
         self._reach_distance = reach_distance
         self._loop = loop
         if isinstance(waypoints, np.ndarray):
+            assert isinstance(initial_positions, np.ndarray), f"Initial positions must have same type as waypoints"
+            assert len(initial_positions.shape) == 2 and initial_positions.shape[1] == 2, \
+                f"Initial positions must have shape of (n_pedestrians, 2) the {initial_positions.shape} array is given"
+            assert initial_positions.shape[0] == waypoints.shape[0], \
+                f"Initial positions and waypoints must have same number of pedestrians, " \
+                f"{initial_positions.shape[0]} and {waypoints.shape[0]} are given"
             assert len(waypoints.shape) == 3 and waypoints.shape[2] == 2, \
-                f"Waypoints must have shape of (n_pedestrians, n_points, 2), the {waypoints.shape} array is passed"
-            self._all_waypoints = {i: waypoints[i] for i in range(waypoints.shape[0])}
+                f"Waypoints must have shape of (n_pedestrians, n_points, 2), the {initial_positions.shape} array is passed"
+            self._all_waypoints = {i: np.concatenate((initial_positions[np.newaxis, i, :], waypoints[i, :]), axis=0)
+                                   for i in range(waypoints.shape[0])}
         else:
+            assert isinstance(initial_positions, dict), f"Initial positions must have same type as waypoints"
             self._all_waypoints = {}
-            for k, v in waypoints:
+            for k, v in waypoints.items():
+                assert k in initial_positions, f"Pedestrian {k} doesn't have initial position"
+                initial_position = initial_positions[k]
+                assert initial_position.shape == (2,), f"Initial positions must have shape (2,), " \
+                                                       f"{initial_position.shape} is given for pedestrian {k}"
                 assert len(v.shape) == 2 and v.shape[1] == 2, \
                     f"waypoints must have shape (n_points, 2), {v.shape} array is passed for pedestrian {k}"
-                self._all_waypoints[k] = v.copy()
+                self._all_waypoints[k] = np.concatenate((initial_position[np.newaxis, :], v), axis=0)
 
-        self._current_indices = {k: 0 for k in self._all_waypoints.keys()}
+        self._current_indices = {k: 1 for k in self._all_waypoints.keys()}
 
     @property
     def state(self) -> FixedWaypointTrackerState:
