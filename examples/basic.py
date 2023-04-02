@@ -30,6 +30,7 @@ def create_sim() -> Tuple[Simulation, Renderer]:
                                    [3., 3.]])
     pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
                                                      waypoint_tracker=tracker,
+                                                     pedestrian_linear_velocity_magnitude=np.array([1.5, 2.5]),
                                                      initial_poses=np.array([[-3., -3., 0.],
                                                                              [3., 3., 0.]]))
     # You can model sensor's noise

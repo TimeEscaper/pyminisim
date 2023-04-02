@@ -8,7 +8,7 @@ Due to requirements of Numba, some vectorized operations are implemented using s
 
 
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union, List
 
 import numpy as np
 from numba import njit
@@ -202,7 +202,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
                  initial_velocities: Optional[np.ndarray] = None,
                  hsfm_params: HSFMParams = HSFMParams.create_default(),
                  pedestrian_mass: float = 70.0,
-                 pedestrian_linear_velocity_magnitude: float = 1.5,
+                 pedestrian_linear_velocity_magnitude: Union[float, np.ndarray] = 1.5,
                  robot_visible: bool = True,
                  noise_std: Optional[float] = None):
         super(HeadedSocialForceModelPolicy, self).__init__()
@@ -220,7 +220,12 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
 
         self._params = hsfm_params
         self._n_pedestrians = initial_poses.shape[0]
-        self._linear_vel_magnitudes = np.repeat(pedestrian_linear_velocity_magnitude, self._n_pedestrians)
+        if isinstance(pedestrian_linear_velocity_magnitude, np.ndarray):
+            assert pedestrian_linear_velocity_magnitude.shape == (n_pedestrians,), \
+                "Linear velocity magnitude must be float or (n_pedestrians,) shape ndarray"
+            self._linear_vel_magnitudes = pedestrian_linear_velocity_magnitude.copy()
+        else:
+            self._linear_vel_magnitudes = np.repeat(pedestrian_linear_velocity_magnitude, self._n_pedestrians)
         self._waypoint_tracker = waypoint_tracker
         if self._waypoint_tracker.state is None:
             self._waypoint_tracker.resample_all({i: initial_poses[i] for i in range(self._n_pedestrians)})
