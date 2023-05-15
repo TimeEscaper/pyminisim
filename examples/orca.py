@@ -67,7 +67,8 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     sim = Simulation(world_map=EmptyWorld(),  # CirclesWorld(circles=np.array([[2., 2., 1.]])),
                      robot_model=robot_model,
                      pedestrians_model=pedestrians_model,
-                     sensors=sensors)
+                     sensors=sensors,
+                     rt_factor=1.)
     renderer = Renderer(simulation=sim,
                         resolution=80.0,
                         screen_size=(700, 700))

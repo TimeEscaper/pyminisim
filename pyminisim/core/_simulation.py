@@ -23,7 +23,7 @@ class Simulation:
                  pedestrians_model: Optional[AbstractPedestriansModel],
                  sensors: List[AbstractSensor],
                  sim_dt: float = 0.01,
-                 rt_factor: Optional[float] = 1.0):
+                 rt_factor: Optional[float] = None):
         self._world_map = world_map
         self._robot_model = robot_model
         self._pedestrians_model = pedestrians_model

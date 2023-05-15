@@ -174,7 +174,8 @@ def create_sim() -> Tuple[Simulation, Renderer]:
                      world_map=CirclesWorld(circles=OBSTACLES),
                      robot_model=robot_model,
                      pedestrians_model=None,
-                     sensors=sensors)
+                     sensors=sensors,
+                     rt_factor=1.)
     renderer = Renderer(simulation=sim,
                         resolution=80.0,
                         screen_size=(500, 500))
@@ -208,7 +209,7 @@ def main():
         print(pose)
 
     # Done! Time to quit.
-    pygame.quit()
+    renderer.close()
 
 
 if __name__ == '__main__':
