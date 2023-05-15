@@ -1,4 +1,4 @@
-pygame==2.1.0
+pygame==2.4.0
 numpy
 pillow
 numba==0.56.4

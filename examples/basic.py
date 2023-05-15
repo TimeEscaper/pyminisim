@@ -6,7 +6,6 @@ import time
 from typing import Tuple
 
 import numpy as np
-import pygame
 
 from pyminisim.core import Simulation
 from pyminisim.world_map import EmptyWorld, CirclesWorld
@@ -69,7 +68,7 @@ def main():
     print("FPS: ", n_frames / (end_time - start_time))
 
     # Done! Time to quit.
-    pygame.quit()
+    renderer.close()
 
 
 if __name__ == '__main__':

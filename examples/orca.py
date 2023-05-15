@@ -103,7 +103,7 @@ def main():
     print("FPS: ", n_frames / (end_time - start_time))
 
     # Done! Time to quit.
-    pygame.quit()
+    renderer.close()
 
 
     import matplotlib as mpl
