@@ -21,7 +21,6 @@ class _AbstractAgentSprite(pygame.sprite.Sprite, ABC):
         super(_AbstractAgentSprite, self).__init__()
         square_side = int(2 * radius * resolution / math.sqrt(2))
         self._surf = pygame.image.load(asset).convert_alpha()
-        self._surf.set_colorkey((255, 255, 255), RLEACCEL)
         self._surf = pygame.transform.scale(self._surf, (square_side, square_side))
 
     def render(self, screen, pixel_pose: Tuple[int, int, int]):
@@ -34,18 +33,24 @@ class _AbstractAgentSprite(pygame.sprite.Sprite, ABC):
 
 class _RobotSprite(_AbstractAgentSprite):
 
-    _ASSET_PATH = pkg_resources.resource_filename("pyminisim.visual", "assets/robot_3Dred.png")
+    _ASSET_PACKAGE = "pyminisim.visual"
+    _ASSET_PATH = "assets/robot_3Dred.png"
 
     def __init__(self, resolution: float):
-        super(_RobotSprite, self).__init__(_RobotSprite._ASSET_PATH, ROBOT_RADIUS, resolution)
+        asset_full_path = pkg_resources.resource_filename(_RobotSprite._ASSET_PACKAGE,
+                                                          _RobotSprite._ASSET_PATH)
+        super(_RobotSprite, self).__init__(asset_full_path, ROBOT_RADIUS, resolution)
 
 
 class _PedestrianSprite(_AbstractAgentSprite):
 
-    _ASSET_PATH = pkg_resources.resource_filename("pyminisim.visual", "assets/character1.png")
+    _ASSET_PACKAGE = "pyminisim.visual"
+    _ASSET_PATH = "assets/character1.png"
 
     def __init__(self, resolution: float):
-        super(_PedestrianSprite, self).__init__(_PedestrianSprite._ASSET_PATH, PEDESTRIAN_RADIUS, resolution)
+        asset_full_path = pkg_resources.resource_filename(_PedestrianSprite._ASSET_PACKAGE,
+                                                          _PedestrianSprite._ASSET_PATH)
+        super(_PedestrianSprite, self).__init__(asset_full_path, PEDESTRIAN_RADIUS, resolution)
 
 
 class _PedestriansSkin:
