@@ -32,3 +32,11 @@ See [examples/](./examples) directory. Available examples:
 * [examples/basic.py](examples/basic.py): Basic example of simulation with Headed Social Force model and simple pedestrian detector
 * [examples/mpc.py](examples/mpc.py): An example of simple Model Predictive Control based navigation with [do-mpc](https://github.com/do-mpc/do-mpc) library
 * [examples/orca.py](examples/orca.py): Basic example with the usage of the ORCA model for pedestrians modeling
+
+---
+
+## Assets
+
+Following asset packs are used in the project:
+* [Robot Pack by Kenney](https://opengameart.org/content/robot-pack)
+* [2D Top Down Office Characters by BunnyHop43](https://opengameart.org/content/2d-top-down-office-characters)
