@@ -1,5 +1,6 @@
 from typing import Tuple
 
+import numpy as np
 import pygame
 
 from pyminisim.core import SimulationState
@@ -13,7 +14,7 @@ class EmptyWorldSkin(AbstractMapSkin):
     def __init__(self):
         super(EmptyWorldSkin, self).__init__()
 
-    def render(self, screen, sim_state: SimulationState):
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
         return
 
 
@@ -28,11 +29,14 @@ class CirclesWorldSkin(AbstractMapSkin):
         self._pixel_centers = pose_converter.convert(world_map.circles[:, :2])
         self._pixel_radii = [int(radius * vis_params.resolution) for radius in world_map.circles[:, 2]]
         self._color = color
+        self._resolution = vis_params.resolution
 
-    def render(self, screen, sim_state: SimulationState):
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
+        pixel_offset_x = -int(self._resolution * global_offset[1])
+        pixel_offset_y = int(self._resolution * global_offset[0])
         for center, radius in zip(self._pixel_centers, self._pixel_radii):
             pygame.draw.circle(screen,
                                self._color,
-                               (center[0], center[1]),
+                               (center[0] + pixel_offset_x, center[1] + pixel_offset_y),
                                radius,
                                0)

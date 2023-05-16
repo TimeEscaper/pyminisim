@@ -20,7 +20,7 @@ class AbstractDrawing(ABC):
 class AbstractDrawingRenderer(ABC):
 
     @abstractmethod
-    def render(self, screen, sim_state: SimulationState):
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
         raise NotImplementedError()
 
 
@@ -128,12 +128,15 @@ class CircleDrawingRenderer(AbstractDrawingRenderer):
         self._pixel_radius = int(drawing.radius * vis_params.resolution)
         self._pixel_width = int(drawing.width * vis_params.resolution)
         self._color = drawing.color
+        self._resolution = vis_params.resolution
 
-    def render(self, screen, sim_state: SimulationState):
-        for center in self._pixel_centers:
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
+        pixel_offset_x = -int(self._resolution * global_offset[1])
+        pixel_offset_y = int(self._resolution * global_offset[0])
+        for center_x, center_y in self._pixel_centers:
             pygame.draw.circle(screen,
                                self._color,
-                               center,
+                               (center_x + pixel_offset_x, center_y + pixel_offset_y),
                                self._pixel_radius,
                                self._pixel_width)
 
@@ -144,6 +147,7 @@ class Covariance2dDrawingRenderer(AbstractDrawingRenderer):
                  drawing: Covariance2dDrawing,
                  vis_params: VisualizationParams):
         # TODO: Drawing type assertions
+        self._resolution = vis_params.resolution
         pose_converter = PoseConverter(vis_params)
 
         means = drawing.mean
@@ -185,6 +189,8 @@ class Covariance2dDrawingRenderer(AbstractDrawingRenderer):
             self._surfaces.append(surface)
             self._centers.append(center)
 
-    def render(self, screen, sim_state: SimulationState):
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
+        pixel_offset_x = -int(self._resolution * global_offset[1])
+        pixel_offset_y = int(self._resolution * global_offset[0])
         for surface, center in zip(self._surfaces, self._centers):
-            screen.blit(surface, center)
+            screen.blit(surface, (center[0] + pixel_offset_x, center[1] + pixel_offset_y))

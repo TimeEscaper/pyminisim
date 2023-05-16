@@ -31,17 +31,18 @@ class PedestrianDetectorSkin(AbstractSensorSkin):
         data = pil_image.tobytes()
         self._surf = pygame.image.fromstring(data, size, mode)
 
-    def render(self, screen, sim_state: SimulationState):
-        self._render_detections(screen, sim_state)
-        self._render_pie(screen, sim_state)
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
+        self._render_detections(screen, sim_state, global_offset)
+        self._render_pie(screen, sim_state, global_offset)
 
-    def _render_detections(self, screen, sim_state: SimulationState):
+    def _render_detections(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
         reading = sim_state.sensors[PedestrianDetector.NAME].reading
         assert isinstance(reading, PedestrianDetectorReading)
         if len(reading.pedestrians) == 0:
             return
-        detected_poses = np.array([sim_state.world.pedestrians.poses[k] for k in reading.pedestrians.keys()])
-        pixel_poses = self._pose_converter.convert(detected_poses)
+        detected_poses = np.array([sim_state.world.pedestrians.poses[k]
+                                   for k in reading.pedestrians.keys()])
+        pixel_poses = self._pose_converter.convert(detected_poses, global_offset=global_offset)
         for pixel_pose in pixel_poses:
             x, y, _ = pixel_pose
             pygame.draw.circle(screen,
@@ -50,9 +51,10 @@ class PedestrianDetectorSkin(AbstractSensorSkin):
                                int(PEDESTRIAN_RADIUS * self._vis_params.resolution),
                                int(0.05 * self._vis_params.resolution))
 
-    def _render_pie(self, screen, sim_state: SimulationState):
+    def _render_pie(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
         x, y, theta = self._pose_converter.convert(sim_state.world.robot.pose,
-                                                   PedestrianDetectorSkin._OFFSET + self._fov / 2.)
+                                                   global_offset=global_offset,
+                                                   angle_offset_degrees=PedestrianDetectorSkin._OFFSET + self._fov / 2.)
         surf = pygame.transform.rotate(self._surf, theta)
         rect = surf.get_rect(center=(x, y))
         screen.blit(surf, rect)

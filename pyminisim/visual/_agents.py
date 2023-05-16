@@ -57,9 +57,11 @@ class _PedestriansSkin:
         self._resolution = vis_params.resolution
         self._sprites = None
 
-    def render(self, screen, sim_state: SimulationState):
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
         ped_poses = np.stack(list(sim_state.world.pedestrians.poses.values()), axis=0)
-        pixel_poses = self._pose_converter.convert(ped_poses, _PedestriansSkin._OFFSET)
+        pixel_poses = self._pose_converter.convert(ped_poses,
+                                                   global_offset=global_offset,
+                                                   angle_offset_degrees=_PedestriansSkin._OFFSET)
         if self._sprites is None or len(pixel_poses) != len(self._sprites):
             self._sprites = [_PedestrianSprite(self._resolution) for _ in range(len(pixel_poses))]
         for pixel_pose, sprite in zip(pixel_poses, self._sprites):
@@ -74,5 +76,7 @@ class _RobotSkin:
         self._pose_converter = PoseConverter(vis_params)
         self._sprite = _RobotSprite(vis_params.resolution)
 
-    def render(self, screen, sim_state: SimulationState):
-        self._sprite.render(screen, self._pose_converter.convert(sim_state.world.robot.pose, _RobotSkin._OFFSET))
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
+        self._sprite.render(screen, self._pose_converter.convert(sim_state.world.robot.pose,
+                                                                 global_offset=global_offset,
+                                                                 angle_offset_degrees=_RobotSkin._OFFSET))
