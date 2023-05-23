@@ -16,6 +16,8 @@ from numba import njit
 from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansModel, AbstractWaypointTracker
 from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 
+from ._utils import norm, calc_desired_velocities
+
 
 @dataclass
 class HSFMParams:
@@ -92,7 +94,7 @@ def _hsfm_ode(m: np.ndarray,
     u_o = k_o * (_dot(f_e, r_o)) - k_d * v_o
     u_b = np.stack((u_f, u_o), axis=1)
 
-    k_lambda_f_0 = k_lambda * _norm(f_0)
+    k_lambda_f_0 = k_lambda * norm(f_0)
     k_theta = I * k_lambda_f_0
     k_omega = I * (1. + alpha) * np.sqrt(k_lambda_f_0 / alpha)
     theta_0 = np.mod(np.arctan2(v_d[:, 1], v_d[:, 0]), 2 * np.pi)
@@ -143,22 +145,6 @@ def _inverse(matrices: np.ndarray):
 
 
 @njit
-def _calc_desired_velocities(current_waypoints: np.ndarray,
-                             current_positions: np.ndarray,
-                             linear_vel_magnitudes: np.ndarray) -> np.ndarray:
-    # Omitted due to Numba requirements
-    # direction = current_waypoints - current_positions
-    # direction = direction / _norm(direction)[:, np.newaxis]
-    # return direction * linear_vel_magnitudes[:, np.newaxis]
-    directions = np.zeros_like(current_waypoints)
-    for i in range(directions.shape[0]):
-        direction = (current_waypoints[i] - current_positions[i])
-        direction = direction / np.linalg.norm(direction)
-        directions[i, :] = direction * linear_vel_magnitudes[i]
-    return directions
-
-
-@njit
 def _matvec(matrix: np.ndarray, vector: np.ndarray) -> np.ndarray:
     # return np.einsum("ijk,ik->ij", matrix, vector)  Omitted due to Numba requirements
     result = np.zeros((matrix.shape[0], matrix.shape[1]))
@@ -173,14 +159,6 @@ def _dot(vector1: np.ndarray, vector2: np.ndarray) -> np.ndarray:
     result = np.zeros((vector1.shape[0],))
     for i in range(vector1.shape[0]):
         result[i] = vector1[i] @ vector2[i]
-    return result
-
-
-@njit
-def _norm(vectors: np.ndarray):
-    result = np.zeros((vectors.shape[0],))
-    for i in range(vectors.shape[0]):
-        result[i] = np.linalg.norm(vectors[i, :])
     return result
 
 
@@ -268,7 +246,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         R = np.array([[[np.cos(theta), -np.sin(theta)],
                        [np.sin(theta), np.cos(theta)]] for theta in current_poses[:, 2]])
         # Desired velocities v_d
-        v_d = _calc_desired_velocities(current_waypoints, r, self._linear_vel_magnitudes)
+        v_d = calc_desired_velocities(current_waypoints, r, self._linear_vel_magnitudes)
         # Current velocities v
         # v = self._state.velocities[:, :2]
         v = current_vels[:, :2]
@@ -307,6 +285,3 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
     def reset_to_state(self, state: HSFMState):
         self._state = state
         self._waypoint_tracker.reset_to_state(state.waypoints)
-
-    def _init_poses(self) -> np.ndarray:
-        pass

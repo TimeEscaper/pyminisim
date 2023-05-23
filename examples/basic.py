@@ -21,21 +21,29 @@ def create_sim() -> Tuple[Simulation, Renderer]:
                                      initial_control=np.array([0.0, np.deg2rad(25.0)]))
 
     tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
-    n_pedestrians = 2
+    n_pedestrians = 3
     waypoints = np.zeros((n_pedestrians, 2, 2))
     waypoints[0, :, :] = np.array([[3., 3.],
                                    [-3., -3.]])
     waypoints[1, :, :] = np.array([[-3., -3.],
                                    [3., 3.]])
-    pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
-                                                     waypoint_tracker=tracker,
-                                                     pedestrian_linear_velocity_magnitude=np.array([1.5, 2.5]),
-                                                     initial_poses=np.array([[-3., -3., 0.],
-                                                                             [3., 3., 0.]]))
+    waypoints[2, :, :] = np.array([[-3., 3.],
+                                   [3., -3.]])
+    initial_poses = np.array([[-3., -3., 0.],
+                              [3., 3., 0.],
+                              [3., -3., 1.7]])
+    pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=n_pedestrians,
+                                                     waypoint_tracker=FixedWaypointTracker(
+                                                         initial_positions=initial_poses[:, :2],
+                                                         waypoints=waypoints,
+                                                         loop=True
+                                                     ),
+                                                     pedestrian_linear_velocity_magnitude=np.array([1.5, 2.5, 1.]),
+                                                     initial_poses=initial_poses)
     # You can model sensor's noise
     # pedestrian_detector_noise = PedestrianDetectorNoise(distance_mu=0., distance_sigma=0.2,
     #                                                     angle_mu=0., angle_sigma=0.05,
-    #                                                     misdetection_prob=0.1)
+    #                                                     misdetection_prob=0.0)
     pedestrian_detector_noise = None
     sensors = [PedestrianDetector(noise=pedestrian_detector_noise)]  # LidarSensor(noise=LidarSensorNoise())]
     sim = Simulation(world_map=EmptyWorld(),  # CirclesWorld(circles=np.array([[2., 2., 1.]])),
