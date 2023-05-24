@@ -10,34 +10,118 @@ from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 from ._utils import norm
 
 
-def _calc_b(current_positions: np.ndarray,
-                           current_velocities: np.ndarray,
-                           directions: np.ndarray,
-                           delta_t: float) -> np.ndarray:
-    r_ab_mat = np.expand_dims(current_positions, 1) - np.expand_dims(current_positions, 0)  # (n_ped, n_ped, 2)
+# def _calc_bs(current_positions: np.ndarray,
+#             current_velocities: np.ndarray,
+#             directions: np.ndarray,
+#             delta_t: float) -> np.ndarray:
+#     r_ab_mat = np.expand_dims(current_positions, 1) - np.expand_dims(current_positions, 0)  # (n_ped, n_ped, 2)
+#
+#     e_b = np.expand_dims(directions, 0)  # (1, n_ped, 2)
+#     v_b = np.expand_dims(norm(current_velocities), 0)  # (1, n_ped)
+#
+#     r_ab_norm = norm(r_ab_mat)  # (n_ped, n_ped)
+#     r_diff_norm = norm(r_ab_mat - v_b * delta_t * e_b)
+#     s_b = v_b * delta_t
+#
+#     b = (r_ab_norm + r_diff_norm) ** 2 - s_b ** 2
+#     b = np.fill_diagonal(b, 0.)
+#     b = np.sqrt(b) / 2.
+#
+#     return b
 
-    e_b = np.expand_dims(directions, 0)  # (1, n_ped, 2)
-    v_b = np.expand_dims(norm(current_velocities), 0)  # (1, n_ped)
 
-    r_ab_norm = norm(r_ab_mat)  # (n_ped, n_ped)
-    r_diff_norm = norm(r_ab_mat - v_b * delta_t * e_b)
-    s_b = v_b * delta_t
+def _calc_goal_forces(current_velocities: np.ndarray,
+                      directions: np.ndarray,
+                      desired_speeds: np.ndarray,
+                      tau: float) -> np.ndarray:
+    return (directions * np.expand_dims(desired_speeds, 1) - current_velocities) / tau
 
-    b = (r_ab_norm + r_diff_norm) ** 2 - s_b ** 2
-    b = np.fill_diagonal(b, 0.)
-    b = np.sqrt(b) / 2.
 
+def _calc_single_b(ego_position: np.ndarray,
+                   target_position: np.ndarray,
+                   target_direction: np.ndarray,
+                   target_speed: np.ndarray,
+                   delta_t: float) -> float:
+    r_ab = ego_position - target_position
+    diff = r_ab - target_speed * delta_t * target_direction
+    b = np.sqrt(np.sum(r_ab ** 2)) + np.sqrt(np.sum(diff ** 2))
+    b = 0.5 * np.sqrt(b ** 2 - (target_speed * delta_t) ** 2)
     return b
 
 
-def _calc_repulsive_forces(current_positions: np.ndarray,
+def _calc_single_v(v_0: float,
+                   sigma: float,
+                   ego_position: np.ndarray,
+                   target_position: np.ndarray,
+                   target_direction: np.ndarray,
+                   target_speed: np.ndarray,
+                   delta_t: float):
+    b = _calc_single_b(ego_position,
+                       target_position,
+                       target_direction,
+                       target_speed,
+                       delta_t)
+    return v_0 * np.exp(-b / sigma)
+
+
+def _calc_grad_v(v_0: float,
+                 sigma: float,
+                 ego_position: np.ndarray,
+                 target_position: np.ndarray,
+                 target_direction: np.ndarray,
+                 target_speed: np.ndarray,
+                 delta_t: float,
+                 delta_diff: float = 1e-3) -> np.ndarray:
+    v = _calc_single_v(v_0,
+                       sigma,
+                       ego_position,
+                       target_position,
+                       target_direction,
+                       target_speed,
+                       delta_t)
+    dx = np.array([delta_diff, 0.])
+    dy = np.array([0., delta_diff])
+
+    dvdx = (_calc_single_v(v_0,
+                           sigma,
+                           ego_position + dx,
+                           target_position,
+                           target_direction,
+                           target_speed,
+                           delta_t) - v) / delta_diff
+    dvdy = (_calc_single_v(v_0,
+                           sigma,
+                           ego_position + dy,
+                           target_position,
+                           target_direction,
+                           target_speed,
+                           delta_t) - v) / delta_diff
+
+    return np.array([dvdx, dvdy])
+
+
+def _calc_repulsive_forces(v_0: float,
+                           sigma: float,
+                           current_positions: np.ndarray,
                            current_velocities: np.ndarray,
                            directions: np.ndarray,
                            delta_t: float) -> np.ndarray:
-    b = _calc_b(current_positions,
-                current_velocities,
-                directions,
-                delta_t)
+    n_peds = current_positions.shape[0]
+    forces = np.zeros((n_peds, n_peds, 2), dtype=current_positions.dtype)
+    for i in range(n_peds):
+        for j in range(n_peds):
+            if i == j:
+                continue
+            target_speed = np.sqrt(current_velocities[j, 0] ** 2 + current_velocities[j, 1] ** 2)
+            f_ab = -_calc_grad_v(v_0, sigma, current_positions[i], current_positions[j], directions[j],
+                                 target_speed, delta_t)
+            forces[i, j, :] = f_ab
+
+    forces = np.sum(forces, axis=1)
+    return forces
+
+
+
 
 
 
