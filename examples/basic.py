@@ -10,7 +10,7 @@ import numpy as np
 from pyminisim.core import Simulation
 from pyminisim.world_map import EmptyWorld, CirclesWorld
 from pyminisim.robot import UnicycleRobotModel
-from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker, FixedWaypointTracker
+from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker, FixedWaypointTracker, ExtendedSocialForceModelPolicy
 from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, \
     LidarSensor, LidarSensorNoise
 from pyminisim.visual import Renderer, CircleDrawing
@@ -18,7 +18,7 @@ from pyminisim.visual import Renderer, CircleDrawing
 
 def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.0]),
-                                     initial_control=np.array([0.0, np.deg2rad(25.0)]))
+                                     initial_control=np.array([1.5, np.deg2rad(25.0)]))
 
     tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
     n_pedestrians = 3
@@ -32,14 +32,23 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     initial_poses = np.array([[-3., -3., 0.],
                               [3., 3., 0.],
                               [3., -3., 1.7]])
-    pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=n_pedestrians,
+    # pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=n_pedestrians,
+    #                                                  waypoint_tracker=FixedWaypointTracker(
+    #                                                      initial_positions=initial_poses[:, :2],
+    #                                                      waypoints=waypoints,
+    #                                                      loop=True
+    #                                                  ),
+    #                                                  pedestrian_linear_velocity_magnitude=np.array([1.5, 2.5, 1.]),
+    #                                                  initial_poses=initial_poses)
+    pedestrians_model = ExtendedSocialForceModelPolicy(n_pedestrians=n_pedestrians,
                                                      waypoint_tracker=FixedWaypointTracker(
                                                          initial_positions=initial_poses[:, :2],
                                                          waypoints=waypoints,
                                                          loop=True
                                                      ),
-                                                     pedestrian_linear_velocity_magnitude=np.array([1.5, 2.5, 1.]),
-                                                     initial_poses=initial_poses)
+                                                       initial_poses=initial_poses,
+                                                       robot_visible=False
+                                                       )
     # You can model sensor's noise
     # pedestrian_detector_noise = PedestrianDetectorNoise(distance_mu=0., distance_sigma=0.2,
     #                                                     angle_mu=0., angle_sigma=0.05,

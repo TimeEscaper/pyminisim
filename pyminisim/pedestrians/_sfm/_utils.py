@@ -9,6 +9,14 @@ def norm(vectors: np.ndarray):
 
 
 @njit
+def calc_directions(current_waypoints: np.ndarray,
+                    current_positions: np.ndarray):
+    direction = current_waypoints - current_positions
+    direction = direction / np.expand_dims(norm(direction), 1)
+    return direction
+
+
+@njit
 def calc_desired_velocities(current_waypoints: np.ndarray,
                             current_positions: np.ndarray,
                             linear_vel_magnitudes: np.ndarray) -> np.ndarray:

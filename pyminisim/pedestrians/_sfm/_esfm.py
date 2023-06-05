@@ -1,13 +1,13 @@
 import numpy as np
 
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from numba import jit, njit
 
 from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansModel, AbstractWaypointTracker
 from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
 
-from ._utils import norm
+from ._utils import norm, calc_directions, calc_desired_velocities
 
 
 # def _calc_bs(current_positions: np.ndarray,
@@ -49,7 +49,7 @@ def _calc_single_b(ego_position: np.ndarray,
     return b
 
 
-def _calc_single_v(v_0: float,
+def _calc_single_v(V_0: float,
                    sigma: float,
                    ego_position: np.ndarray,
                    target_position: np.ndarray,
@@ -61,10 +61,10 @@ def _calc_single_v(v_0: float,
                        target_direction,
                        target_speed,
                        delta_t)
-    return v_0 * np.exp(-b / sigma)
+    return V_0 * np.exp(-b / sigma)
 
 
-def _calc_grad_v(v_0: float,
+def _calc_grad_v(V_0: float,
                  sigma: float,
                  ego_position: np.ndarray,
                  target_position: np.ndarray,
@@ -72,7 +72,7 @@ def _calc_grad_v(v_0: float,
                  target_speed: np.ndarray,
                  delta_t: float,
                  delta_diff: float = 1e-3) -> np.ndarray:
-    v = _calc_single_v(v_0,
+    v = _calc_single_v(V_0,
                        sigma,
                        ego_position,
                        target_position,
@@ -82,14 +82,14 @@ def _calc_grad_v(v_0: float,
     dx = np.array([delta_diff, 0.])
     dy = np.array([0., delta_diff])
 
-    dvdx = (_calc_single_v(v_0,
+    dvdx = (_calc_single_v(V_0,
                            sigma,
                            ego_position + dx,
                            target_position,
                            target_direction,
                            target_speed,
                            delta_t) - v) / delta_diff
-    dvdy = (_calc_single_v(v_0,
+    dvdy = (_calc_single_v(V_0,
                            sigma,
                            ego_position + dy,
                            target_position,
@@ -100,7 +100,7 @@ def _calc_grad_v(v_0: float,
     return np.array([dvdx, dvdy])
 
 
-def _calc_repulsive_forces(v_0: float,
+def _calc_repulsive_forces(V_0: float,
                            sigma: float,
                            current_positions: np.ndarray,
                            current_velocities: np.ndarray,
@@ -113,7 +113,7 @@ def _calc_repulsive_forces(v_0: float,
             if i == j:
                 continue
             target_speed = np.sqrt(current_velocities[j, 0] ** 2 + current_velocities[j, 1] ** 2)
-            f_ab = -_calc_grad_v(v_0, sigma, current_positions[i], current_positions[j], directions[j],
+            f_ab = -_calc_grad_v(V_0, sigma, current_positions[i], current_positions[j], directions[j],
                                  target_speed, delta_t)
             forces[i, j, :] = f_ab
 
@@ -121,14 +121,39 @@ def _calc_repulsive_forces(v_0: float,
     return forces
 
 
+def _esfm_ode(current_waypoints: np.ndarray,
+              current_positions: np.ndarray,
+              current_velocities: np.ndarray,
+              desired_speeds: np.ndarray,
+              tau: float,
+              V_0: float,
+              sigma: float,
+              delta_t: float) -> Tuple[np.ndarray, np.ndarray]:
+    directions = calc_directions(current_waypoints, current_positions)
+    goal_forces = _calc_goal_forces(current_velocities,
+                               directions,
+                               desired_speeds,
+                               tau)
+    repulsive_forces = _calc_repulsive_forces(V_0,
+                                              sigma,
+                                              current_positions,
+                                              current_velocities,
+                                              directions,
+                                              delta_t)
+    forces = goal_forces + repulsive_forces
 
+    new_velocities = current_velocities + forces * delta_t
+    new_positions = current_positions + new_velocities * delta_t
 
-
+    return new_positions, new_velocities
 
 
 @dataclass
 class ESFMParams:
-    tau: float
+    tau: float = 0.5
+    V0: float = 2.1
+    sigma: float = 0.3
+    v_max: Optional[float] = None
 
 
 class ESFMState(AbstractPedestriansModelState):
@@ -142,11 +167,9 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
                  n_pedestrians: int,
                  initial_poses: Optional[np.ndarray] = None,
                  initial_velocities: Optional[np.ndarray] = None,
-                 esfm_params: ESFMParams = ESFMParams.create_default(),
-                 pedestrian_mass: float = 70.0,
-                 pedestrian_linear_velocity_magnitude: Union[float, np.ndarray] = 1.5,
-                 robot_visible: bool = True,
-                 noise_std: Optional[float] = None):
+                 esfm_params: ESFMParams = ESFMParams(),
+                 desired_speeds: Union[np.ndarray, float] = 1.5,
+                 robot_visible: bool = True):
         super(ExtendedSocialForceModelPolicy, self).__init__()
 
         if initial_poses is None:
@@ -162,12 +185,14 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
 
         self._params = esfm_params
         self._n_pedestrians = initial_poses.shape[0]
-        if isinstance(pedestrian_linear_velocity_magnitude, np.ndarray):
-            assert pedestrian_linear_velocity_magnitude.shape == (n_pedestrians,), \
-                "Linear velocity magnitude must be float or (n_pedestrians,) shape ndarray"
-            self._linear_vel_magnitudes = pedestrian_linear_velocity_magnitude.copy()
+
+        if isinstance(desired_speeds, np.ndarray):
+            assert desired_speeds.shape == (n_pedestrians,), \
+                "desired_speeds must be single float or (n_pedestrians,) shape ndarray"
+            self._desired_speeds = desired_speeds.copy()
         else:
-            self._linear_vel_magnitudes = np.repeat(pedestrian_linear_velocity_magnitude, self._n_pedestrians)
+            self._desired_speeds = np.repeat(desired_speeds, self._n_pedestrians)
+
         self._waypoint_tracker = waypoint_tracker
         if self._waypoint_tracker.state is None:
             self._waypoint_tracker.resample_all({i: initial_poses[i] for i in range(self._n_pedestrians)})
@@ -175,14 +200,9 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
 
         self._radii = np.repeat(PEDESTRIAN_RADIUS, self._n_pedestrians)
         self._robot_radius = ROBOT_RADIUS
-        # Masses and inertia
-        self._m = np.repeat(pedestrian_mass, self._n_pedestrians)
-        self._I = 0.5 * (self._radii ** 2)
 
         self._state = ESFMState({i: (initial_poses[i], initial_velocities[i])
                                  for i in range(self._n_pedestrians)}, self._waypoint_tracker.state)
-
-        self._noise_std = noise_std
 
     @property
     def state(self) -> ESFMState:
@@ -197,45 +217,61 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
         poses_backup = self._state.poses
         vels_backup = self._state.velocities
 
+
+
         current_poses = np.stack(list(self._state.poses.values()), axis=0)
         current_vels = np.stack(list(self._state.velocities.values()), axis=0)
         current_waypoints = np.stack(list(self._waypoint_tracker.state.current_waypoints.values()), axis=0)
 
-        # Current positions
-        r = current_poses[:, :2] # self._state.poses[:, :2]
-        # Current orientations and angular velocities
-        # q = np.stack((self._state.poses[:, 2], self._state.velocities[:, 2]), axis=1)
-        q = np.stack((current_poses[:, 2], current_vels[:, 2]), axis=1)
-        # Current rotation matrix
-        R = np.array([[[np.cos(theta), -np.sin(theta)],
-                       [np.sin(theta), np.cos(theta)]] for theta in current_poses[:, 2]])
-        # Desired velocities v_d
-        v_d = calc_desired_velocities(current_waypoints, r, self._linear_vel_magnitudes)
-        # Current velocities v
-        # v = self._state.velocities[:, :2]
-        v = current_vels[:, :2]
+        poses, velocities = _esfm_ode(
+            current_waypoints,
+            current_poses[:, :2],
+            current_vels[:, :2],
+            self._desired_speeds,
+            self._params.tau,
+            self._params.V0,
+            self._params.sigma,
+            dt
+        )
 
-        # Here we do not use "fair" integrators (e.g. scipy.integrate.ode), as it was in original paper's code
-        # in sake of better computational performance and Numba compatibility.
-        if robot_pose is not None and self._robot_visible:
-            robot_pose = robot_pose[:2]
-            robot_velocity = robot_velocity[:2]
-        else:
-            robot_pose = None
-            robot_velocity = None
-        dr, dv_b, dq = _hsfm_ode(self._m, self._I, v, v_d, r, self._radii, R, q, self._robot_radius,
-                                 robot_pose, robot_velocity,
-                                 **self._params.__dict__)
-        if self._noise_std is not None:
-            dv_b = dv_b + np.random.normal(0, self._noise_std, dv_b.shape)
-        r = r + dr * dt
-        q = q + dq * dt
-        R = np.array([[[np.cos(theta), -np.sin(theta)],
-                       [np.sin(theta), np.cos(theta)]] for theta in q[:, 0]])
-        v = v + _matvec(R, dv_b * dt)
+        poses = np.concatenate((poses, current_poses[:, 2, np.newaxis]), axis=-1)
+        velocities = np.concatenate((velocities, current_vels[:, 2, np.newaxis]), axis=-1)
 
-        poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
-        velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)
+        # # Current positions
+        # r = current_poses[:, :2] # self._state.poses[:, :2]
+        # # Current orientations and angular velocities
+        # # q = np.stack((self._state.poses[:, 2], self._state.velocities[:, 2]), axis=1)
+        # q = np.stack((current_poses[:, 2], current_vels[:, 2]), axis=1)
+        # # Current rotation matrix
+        # R = np.array([[[np.cos(theta), -np.sin(theta)],
+        #                [np.sin(theta), np.cos(theta)]] for theta in current_poses[:, 2]])
+        # # Desired velocities v_d
+        # v_d = calc_desired_velocities(current_waypoints, r, self._linear_vel_magnitudes)
+        # # Current velocities v
+        # # v = self._state.velocities[:, :2]
+        # v = current_vels[:, :2]
+        #
+        # # Here we do not use "fair" integrators (e.g. scipy.integrate.ode), as it was in original paper's code
+        # # in sake of better computational performance and Numba compatibility.
+        # if robot_pose is not None and self._robot_visible:
+        #     robot_pose = robot_pose[:2]
+        #     robot_velocity = robot_velocity[:2]
+        # else:
+        #     robot_pose = None
+        #     robot_velocity = None
+        # dr, dv_b, dq = _hsfm_ode(self._m, self._I, v, v_d, r, self._radii, R, q, self._robot_radius,
+        #                          robot_pose, robot_velocity,
+        #                          **self._params.__dict__)
+        # if self._noise_std is not None:
+        #     dv_b = dv_b + np.random.normal(0, self._noise_std, dv_b.shape)
+        # r = r + dr * dt
+        # q = q + dq * dt
+        # R = np.array([[[np.cos(theta), -np.sin(theta)],
+        #                [np.sin(theta), np.cos(theta)]] for theta in q[:, 0]])
+        # v = v + _matvec(R, dv_b * dt)
+        #
+        # poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
+        # velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)
 
         pedestrians = {i: (poses[i, :], velocities[i, :]) for i in range(self._n_pedestrians)}
 
@@ -244,8 +280,8 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
             if v[1]:
                 pedestrians[k] = (poses_backup[k].copy(), np.zeros_like(vels_backup[k]))
 
-        self._state = HSFMState(pedestrians, self._waypoint_tracker.state)
+        self._state = ESFMState(pedestrians, self._waypoint_tracker.state)
 
-    def reset_to_state(self, state: HSFMState):
+    def reset_to_state(self, state: ESFMState):
         self._state = state
         self._waypoint_tracker.reset_to_state(state.waypoints)
