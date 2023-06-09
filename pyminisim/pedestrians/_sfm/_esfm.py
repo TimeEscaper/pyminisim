@@ -151,7 +151,7 @@ def _esfm_ode(current_waypoints: np.ndarray,
 @dataclass
 class ESFMParams:
     tau: float = 0.5
-    V0: float = 2.1
+    V_0: float = 1.
     sigma: float = 0.3
     v_max: Optional[float] = None
 
@@ -229,7 +229,7 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
             current_vels[:, :2],
             self._desired_speeds,
             self._params.tau,
-            self._params.V0,
+            self._params.V_0,
             self._params.sigma,
             dt
         )

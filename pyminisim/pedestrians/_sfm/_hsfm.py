@@ -38,9 +38,9 @@ class HSFMParams:
                           B=0.08,
                           k_1=1.2 * 10 ** 5,
                           k_2=2.4 * 10 ** 5,
-                          k_o=1.,
-                          k_d=500.,
-                          k_lambda=0.3,
+                          k_o=1000,
+                          k_d=10000.,
+                          k_lambda=0.1,
                           alpha=3.)
 
 
@@ -213,7 +213,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         self._robot_radius = ROBOT_RADIUS
         # Masses and inertia
         self._m = np.repeat(pedestrian_mass, self._n_pedestrians)
-        self._I = 0.5 * (self._radii ** 2)
+        self._I = 0.5 * (self._radii ** 2) * self._m
 
         self._state = HSFMState({i: (initial_poses[i], initial_velocities[i])
                                  for i in range(self._n_pedestrians)}, self._waypoint_tracker.state)
@@ -261,14 +261,23 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
             robot_velocity = None
         dr, dv_b, dq = _hsfm_ode(self._m, self._I, v, v_d, r, self._radii, R, q, self._robot_radius,
                                  robot_pose, robot_velocity,
-                                 **self._params.__dict__)
+                                 tau=self._params.tau,
+                                 A=self._params.A,
+                                 B=self._params.B,
+                                 k_1=self._params.k_1,
+                                 k_2=self._params.k_2,
+                                 k_o=self._params.k_o,
+                                 k_d=self._params.k_d,
+                                 k_lambda=self._params.k_lambda,
+                                 alpha=self._params.alpha)
         if self._noise_std is not None:
             dv_b = dv_b + np.random.normal(0, self._noise_std, dv_b.shape)
-        r = r + dr * dt
+        # r = r + dr * dt
         q = q + dq * dt
         R = np.array([[[np.cos(theta), -np.sin(theta)],
                        [np.sin(theta), np.cos(theta)]] for theta in q[:, 0]])
         v = v + _matvec(R, dv_b * dt)
+        r = r + v * dt
 
         poses = np.concatenate([r, q[:, 0, np.newaxis]], axis=1)
         velocities = np.concatenate([v, q[:, 1, np.newaxis]], axis=1)

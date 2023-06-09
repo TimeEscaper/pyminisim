@@ -21,29 +21,28 @@ def create_sim() -> Tuple[Simulation, Renderer]:
                                      initial_control=np.array([1.5, np.deg2rad(25.0)]))
 
     tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
-    n_pedestrians = 3
+    n_pedestrians = 2
     waypoints = np.zeros((n_pedestrians, 2, 2))
-    waypoints[0, :, :] = np.array([[3., 3.],
-                                   [-3., -3.]])
-    waypoints[1, :, :] = np.array([[-3., -3.],
-                                   [3., 3.]])
-    waypoints[2, :, :] = np.array([[-3., 3.],
-                                   [3., -3.]])
-    initial_poses = np.array([[-3., -3., 0.],
-                              [3., 3., 0.],
-                              [3., -3., 1.7]])
+    waypoints[0, :, :] = np.array([[0., 3.],
+                                   [0., -3.]])
+    waypoints[1, :, :] = np.array([[0., -3.],
+                                   [0., 3.]])
+    # waypoints[2, :, :] = np.array([[-3., 3.],
+    #                                [3., -3.]])
+    initial_poses = np.array([[0, -3., np.pi / 2],
+                              [0, 3., -np.pi / 2]])
     # pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=n_pedestrians,
     #                                                  waypoint_tracker=FixedWaypointTracker(
     #                                                      initial_positions=initial_poses[:, :2],
     #                                                      waypoints=waypoints,
     #                                                      loop=True
     #                                                  ),
-    #                                                  pedestrian_linear_velocity_magnitude=np.array([1.5, 2.5, 1.]),
-    #                                                  initial_poses=initial_poses)
+    #                                                  initial_poses=initial_poses,
+    #                                                  pedestrian_linear_velocity_magnitude=np.array([1.5, 1.]))
     pedestrians_model = ExtendedSocialForceModelPolicy(n_pedestrians=n_pedestrians,
                                                      waypoint_tracker=FixedWaypointTracker(
-                                                         initial_positions=initial_poses[:, :2],
-                                                         waypoints=waypoints,
+                                                     initial_positions=initial_poses[:, :2],
+                                                waypoints=waypoints,
                                                          loop=True
                                                      ),
                                                        initial_poses=initial_poses,
@@ -56,7 +55,7 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     pedestrian_detector_noise = None
     sensors = [PedestrianDetector(noise=pedestrian_detector_noise)]  # LidarSensor(noise=LidarSensorNoise())]
     sim = Simulation(world_map=EmptyWorld(),  # CirclesWorld(circles=np.array([[2., 2., 1.]])),
-                     robot_model=robot_model,
+                     robot_model=None,
                      pedestrians_model=pedestrians_model,
                      sensors=sensors,
                      rt_factor=1.)
@@ -75,10 +74,20 @@ def main():
     start_time = time.time()
     end_time = time.time()
     n_frames = 0
+
+    previous_poses = np.array(list(sim.current_state.world.pedestrians.poses.values()))[:, :2]
+
     while running:
         renderer.render()
         n_frames += 1
         sim.step()
+
+        current_poses = np.array(list(sim.current_state.world.pedestrians.poses.values()))[:, :2]
+        velocities = (current_poses - previous_poses) / sim.sim_dt
+        velocities = np.linalg.norm(velocities, axis=1)
+        previous_poses = current_poses
+        # print(velocities)
+
         current_time = time.time()
         if current_time - start_time >= 1000.0:
             end_time = current_time
