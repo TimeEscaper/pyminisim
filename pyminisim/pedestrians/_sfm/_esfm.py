@@ -6,6 +6,7 @@ from numba import jit, njit
 
 from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansModel, AbstractWaypointTracker
 from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
+from pyminisim.util import wrap_angle, wrap_angle_numba
 
 from ._utils import norm, calc_directions, calc_desired_velocities
 
@@ -100,24 +101,80 @@ def _calc_grad_v(V_0: float,
     return np.array([dvdx, dvdy])
 
 
-def _calc_repulsive_forces(V_0: float,
-                           sigma: float,
-                           current_positions: np.ndarray,
+# def _calc_repulsive_forces(V_0: float,
+#                            sigma: float,
+#                            current_positions: np.ndarray,
+#                            current_velocities: np.ndarray,
+#                            directions: np.ndarray,
+#                            delta_t: float) -> np.ndarray:
+#     n_peds = current_positions.shape[0]
+#     forces = np.zeros((n_peds, n_peds, 2), dtype=current_positions.dtype)
+#     for i in range(n_peds):
+#         for j in range(n_peds):
+#             if i == j:
+#                 continue
+#             target_speed = np.sqrt(current_velocities[j, 0] ** 2 + current_velocities[j, 1] ** 2)
+#             f_ab = -_calc_grad_v(V_0, sigma, current_positions[i], current_positions[j], directions[j],
+#                                  target_speed, delta_t)
+#             forces[i, j, :] = f_ab
+#
+#     forces = np.sum(forces, axis=1)
+#     return forces
+
+
+def _calc_repulsive_force(ego_position: np.ndarray,
+                          ego_velocity: np.ndarray,
+                          target_position: np.ndarray,
+                          target_velocity: np.ndarray,
+                          lmbda: float,
+                          gamma: float,
+                          A: float,
+                          n: float,
+                          n_prime: float,
+                          eps: float):
+    e = target_position - ego_position
+    e = e / np.linalg.norm(e)
+    d = np.linalg.norm(target_position - ego_position) - 2 * PEDESTRIAN_RADIUS
+
+    D = lmbda * (ego_velocity - target_velocity) + e
+    t = D / np.linalg.norm(D)  # Interaction direction
+    theta = np.arctan2(t[1], t[0]) - np.arctan2(e[1], e[0])
+    theta = wrap_angle(theta)
+
+    B = gamma * np.linalg.norm(D)
+    theta = theta + B * eps
+    K = np.sign(theta)
+
+    f_v = -A * np.exp(-d / B - (n_prime * B * theta) ** 2)
+    f_theta = -A * K * np.exp(-d / B - (n * B * theta) ** 2)
+
+    force_velocity = f_v * t
+    force_angle = f_theta * np.array([-t[1], t[0]])
+
+    force = force_velocity + force_angle
+
+    return force
+
+
+def _calc_repulsive_forces(current_positions: np.ndarray,
                            current_velocities: np.ndarray,
-                           directions: np.ndarray,
-                           delta_t: float) -> np.ndarray:
+                           lmbda: float,
+                           gamma: float,
+                           A: float,
+                           n: float,
+                           n_prime: float,
+                           eps: float) -> np.ndarray:
     n_peds = current_positions.shape[0]
-    forces = np.zeros((n_peds, n_peds, 2), dtype=current_positions.dtype)
+    forces = np.zeros((n_peds, 2), dtype=current_positions.dtype)
     for i in range(n_peds):
         for j in range(n_peds):
             if i == j:
                 continue
-            target_speed = np.sqrt(current_velocities[j, 0] ** 2 + current_velocities[j, 1] ** 2)
-            f_ab = -_calc_grad_v(V_0, sigma, current_positions[i], current_positions[j], directions[j],
-                                 target_speed, delta_t)
-            forces[i, j, :] = f_ab
-
-    forces = np.sum(forces, axis=1)
+            forces[i] += _calc_repulsive_force(ego_position=current_positions[i],
+                                               ego_velocity=current_velocities[i],
+                                               target_position=current_positions[j],
+                                               target_velocity=current_velocities[j],
+                                               lmbda=lmbda, gamma=gamma, A=A, n=n, n_prime=n_prime, eps=eps)
     return forces
 
 
@@ -125,25 +182,32 @@ def _esfm_ode(current_waypoints: np.ndarray,
               current_positions: np.ndarray,
               current_velocities: np.ndarray,
               desired_speeds: np.ndarray,
+              dt: float,
               tau: float,
-              V_0: float,
-              sigma: float,
-              delta_t: float) -> Tuple[np.ndarray, np.ndarray]:
+              lmbda: float,
+              gamma: float,
+              A: float,
+              n: float,
+              n_prime: float,
+              eps: float) -> Tuple[np.ndarray, np.ndarray]:
     directions = calc_directions(current_waypoints, current_positions)
     goal_forces = _calc_goal_forces(current_velocities,
                                directions,
                                desired_speeds,
                                tau)
-    repulsive_forces = _calc_repulsive_forces(V_0,
-                                              sigma,
-                                              current_positions,
-                                              current_velocities,
-                                              directions,
-                                              delta_t)
+    repulsive_forces = _calc_repulsive_forces(current_positions=current_positions,
+                                              current_velocities=current_velocities,
+                                              lmbda=lmbda, gamma=gamma, A=A, n=n, n_prime=n_prime, eps=eps)
+    # repulsive_forces = _calc_repulsive_forces(V_0,
+    #                                           sigma,
+    #                                           current_positions,
+    #                                           current_velocities,
+    #                                           directions,
+    #                                           delta_t)
     forces = goal_forces + repulsive_forces
 
-    new_velocities = current_velocities + forces * delta_t
-    new_positions = current_positions + new_velocities * delta_t
+    new_velocities = current_velocities + forces * dt
+    new_positions = current_positions + new_velocities * dt
 
     return new_positions, new_velocities
 
@@ -151,9 +215,15 @@ def _esfm_ode(current_waypoints: np.ndarray,
 @dataclass
 class ESFMParams:
     tau: float = 0.5
-    V_0: float = 1.
-    sigma: float = 0.3
-    v_max: Optional[float] = None
+    lmbda: float = 2.
+    gamma: float = 0.35
+    A: float = 4.5
+    n: float = 2.
+    n_prime: float = 3.
+    eps: float = 0.1
+    # V_0: float = 1.
+    # sigma: float = 0.3
+    # v_max: Optional[float] = None
 
 
 class ESFMState(AbstractPedestriansModelState):
@@ -217,8 +287,6 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
         poses_backup = self._state.poses
         vels_backup = self._state.velocities
 
-
-
         current_poses = np.stack(list(self._state.poses.values()), axis=0)
         current_vels = np.stack(list(self._state.velocities.values()), axis=0)
         current_waypoints = np.stack(list(self._waypoint_tracker.state.current_waypoints.values()), axis=0)
@@ -228,10 +296,14 @@ class ExtendedSocialForceModelPolicy(AbstractPedestriansModel):
             current_poses[:, :2],
             current_vels[:, :2],
             self._desired_speeds,
-            self._params.tau,
-            self._params.V_0,
-            self._params.sigma,
-            dt
+            dt,
+            tau=self._params.tau,
+            lmbda=self._params.lmbda,
+            gamma=self._params.gamma,
+            A=self._params.A,
+            n=self._params.n,
+            n_prime=self._params.n_prime,
+            eps=self._params.eps
         )
 
         poses = np.concatenate((poses, current_poses[:, 2, np.newaxis]), axis=-1)

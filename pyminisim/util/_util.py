@@ -1,8 +1,14 @@
 import numpy as np
 from typing import Union
+from numba import njit
 
 
 def wrap_angle(angle: Union[np.ndarray, float]) -> float:
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+@njit
+def wrap_angle_numba(angle: Union[np.ndarray, float]) -> float:
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
 
