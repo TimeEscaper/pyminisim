@@ -12,7 +12,7 @@ import do_mpc
 import casadi
 
 from pyminisim.core import Simulation
-from pyminisim.world_map import EmptyWorld, CirclesWorld
+from pyminisim.world_map import EmptyWorld, CirclesWorld, AABBWorld
 from pyminisim.robot import UnicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
 from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, OmniObstacleDetector
@@ -166,19 +166,32 @@ class DoMPCController:
 OBSTACLES = np.array([[1.5, 0., 0.8]])
 
 
+def create_walls() -> AABBWorld:
+    thickness = 0.3
+    walls = [
+        [2.5, -2.5, 5., thickness],
+        [2.5 - thickness, -2.5, thickness, 5. - thickness],
+        [2.5 - thickness, 2.5 - thickness, thickness, 5. - thickness],
+        [-2.5 + thickness, -2.5, 5., thickness]
+    ]
+    return AABBWorld(boxes=np.array(walls), colors=(199, 195, 195))
+
+
 def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.]),
                                      initial_control=np.array([0., np.deg2rad(0.)]))
     sensors = []
     sim = Simulation(sim_dt=0.01,
-                     world_map=CirclesWorld(circles=OBSTACLES),
+                     # world_map=CirclesWorld(circles=OBSTACLES),
+                     world_map=create_walls(),
                      robot_model=robot_model,
                      pedestrians_model=None,
                      sensors=sensors,
                      rt_factor=1.)
     renderer = Renderer(simulation=sim,
                         resolution=80.0,
-                        screen_size=(500, 500))
+                        screen_size=(500, 500),
+                        camera="robot")
     return sim, renderer
 
 

@@ -12,9 +12,9 @@ from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarS
     Covariance2dDrawing, Covariance2dDrawingRenderer
 from pyminisim.visual.util import PoseConverter
 from pyminisim.sensors import PedestrianDetector, LidarSensor
-from pyminisim.world_map import EmptyWorld, CirclesWorld
+from pyminisim.world_map import EmptyWorld, CirclesWorld, AABBWorld
 from ._agents import _RobotSkin, _PedestriansSkin
-from ._maps import EmptyWorldSkin, CirclesWorldSkin
+from ._maps import EmptyWorldSkin, CirclesWorldSkin, AABBWorldSkin
 
 
 class _RendererThread(threading.Thread):
@@ -78,8 +78,12 @@ class Renderer:
         # TODO: Decouple world map visualization
         if isinstance(self._sim.world_map, CirclesWorld):
             self._map = CirclesWorldSkin(self._sim.world_map, self._vis_params)
-        else:
+        elif isinstance(self._sim.world_map, EmptyWorld):
             self._map = EmptyWorldSkin()
+        elif isinstance(self._sim.world_map, AABBWorld):
+            self._map = AABBWorldSkin(self._sim.world_map, self._vis_params)
+        else:
+            raise ValueError(f"Unknown map type of {self._sim.world_map}")
 
         self._drawings = {}
 
