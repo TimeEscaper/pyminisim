@@ -116,9 +116,11 @@ class LidarSensor(AbstractSensor):
 
         points = []
         for i, beam in enumerate(occupation):
-            if beam.all() or not beam[0]:
-                continue
-            points.append(check_points[i, np.argmin(beam), :])
+            if beam.any() and not beam[0]:
+                points.append(check_points[i, np.argmax(beam), :])
+            # if not beam.all() or not beam[0]:
+            #     continue
+            # points.append(check_points[i, np.argmin(beam), :])
 
         reading = LidarSensorReading(np.array(points))
         if self._noise is not None:

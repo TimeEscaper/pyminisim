@@ -69,7 +69,7 @@ class LidarSensorSkin(AbstractSensorSkin):
         self._pose_converter = PoseConverter(vis_params)
         self._pixel_radius = int(LidarSensorSkin._POINT_RADIUS * vis_params.resolution)
 
-    def render(self, screen, sim_state: SimulationState):
+    def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
         if LidarSensor.NAME not in sim_state.sensors:
             return
         reading = sim_state.sensors[LidarSensor.NAME].reading
@@ -78,7 +78,7 @@ class LidarSensorSkin(AbstractSensorSkin):
         if len(reading.points) == 0:
             return
 
-        pixel_points = self._pose_converter.convert(reading.points)
+        pixel_points = self._pose_converter.convert(reading.points, global_offset=global_offset)
         for pixel_point in pixel_points:
             x, y = pixel_point
             pygame.draw.circle(screen,

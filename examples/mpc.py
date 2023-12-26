@@ -15,7 +15,7 @@ from pyminisim.core import Simulation
 from pyminisim.world_map import EmptyWorld, CirclesWorld, AABBWorld
 from pyminisim.robot import UnicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
-from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, OmniObstacleDetector
+from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, OmniObstacleDetector, LidarSensor, LidarSensorConfig
 from pyminisim.visual import Renderer, CircleDrawing
 
 
@@ -75,6 +75,9 @@ class DoMPCController:
             't_step': 0.1,
             'state_discretization': 'discrete',
             'store_full_solution': True,
+            "nlpsol_opts": {"ipopt.print_level": 0,
+                            "ipopt.sb": "yes",
+                            "print_time": 0}
             # Use MA27 linear solver in ipopt for faster calculations:
             # 'nlpsol_opts': {'ipopt.linear_solver': 'MA27'}
         }
@@ -180,7 +183,9 @@ def create_walls() -> AABBWorld:
 def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.]),
                                      initial_control=np.array([0., np.deg2rad(0.)]))
-    sensors = []
+    sensors = [
+        LidarSensor(config=LidarSensorConfig())
+    ]
     sim = Simulation(sim_dt=0.01,
                      # world_map=CirclesWorld(circles=OBSTACLES),
                      world_map=create_walls(),
@@ -216,10 +221,12 @@ def main():
             u_pred = controller.predict(x_current)
             hold_time = 0.
 
+        start_time = time.time()
         sim.step(u_pred)
+        sim.world_map.is_occupied(np.array([2.4, 2.4]))
+        finish_time = time.time()
+        # print(f"RT factor: {sim.sim_dt / (finish_time - start_time)}")
         hold_time += sim.sim_dt
-        pose = sim.current_state.world.robot.pose
-        print(pose)
 
     # Done! Time to quit.
     renderer.close()

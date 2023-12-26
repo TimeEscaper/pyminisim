@@ -91,16 +91,27 @@ class AABBWorld(AbstractStaticWorldMap):
             single_input = False
 
         boxes = self.current_state.boxes
-        result = []
-        for i in range(point.shape[0]):
-            occupied = False
-            for j in range(boxes.shape[0]):
-                tl_x, tl_y, w, h = boxes[j]
-                x, y = point[i]
-                occupied = (tl_x <= x <= (tl_x + w)) and (tl_y <= y <= (tl_y + h))
-                if occupied:
-                    break
-            result.append(occupied)
+        result = np.zeros((point.shape[0]), dtype=bool)
+        for box in boxes:
+            tl_x, tl_y, w, h = box
+            occupied = np.logical_and(
+                np.logical_and(point[:, 0] <= tl_x, point[:, 0] >= (tl_x - h)),
+                np.logical_and(point[:, 1] >= tl_y, point[:, 1] <= (tl_y + w))
+            )
+            # occupied = np.logical_and((tl_x <= point[:, 0] <= (tl_x + w)), (tl_y <= point[:, 1] <= (tl_y + h)))
+            result = np.logical_or(result, occupied)
+
+
+        # result = []
+        # for i in range(point.shape[0]):
+        #     occupied = False
+        #     for j in range(boxes.shape[0]):
+        #         tl_x, tl_y, w, h = boxes[j]
+        #         x, y = point[i]
+        #         occupied = (tl_x <= x <= (tl_x + w)) and (tl_y <= y <= (tl_y + h))
+        #         if occupied:
+        #             break
+        #     result.append(occupied)
 
         if single_input:
             return result[0]

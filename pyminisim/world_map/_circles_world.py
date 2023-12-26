@@ -46,7 +46,7 @@ class CirclesWorld(AbstractStaticWorldMap):
 
         pairwise_dist = cdist(point, self._state.circles[:, :2], metric="euclidean")
         pairwise_dist = pairwise_dist - self._state.circles[:, 2]
-        result = (pairwise_dist > 0.).all(axis=1)
+        result = (pairwise_dist <= 0.).any(axis=1)
         return result
 
     @property
