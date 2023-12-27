@@ -225,7 +225,7 @@ def main():
         sim.step(u_pred)
         sim.world_map.is_occupied(np.array([2.4, 2.4]))
         finish_time = time.time()
-        # print(f"RT factor: {sim.sim_dt / (finish_time - start_time)}")
+        print(f"RT factor: {sim.sim_dt / (finish_time - start_time)}")
         hold_time += sim.sim_dt
 
     # Done! Time to quit.

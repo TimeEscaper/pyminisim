@@ -2,7 +2,8 @@ from typing import Optional
 
 import numpy as np
 
-from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel
+from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel, ROBOT_RADIUS
+from pyminisim.core._world_map import AbstractWorldMap
 
 
 class DoubleIntegratorRobotModelState(AbstractRobotMotionModelState):
@@ -36,7 +37,7 @@ class DoubleIntegratorRobotModel(AbstractRobotMotionModel):
         assert initial_control.shape == (DoubleIntegratorRobotModel._CONTROL_DIM,)
         super(DoubleIntegratorRobotModel, self).reset(initial_pose, initial_velocity, initial_control)
 
-    def step(self, dt: float, control: Optional[np.ndarray] = None):
+    def step(self, dt: float, world_map: AbstractWorldMap, control: Optional[np.ndarray] = None) -> bool:
         if control is None:
             control = self._state.control
         x = self._state.pose[0] + self._state.velocity[0] * dt
@@ -46,6 +47,12 @@ class DoubleIntegratorRobotModel(AbstractRobotMotionModel):
         v_x = self._state.velocity[0] + control[0] * dt
         v_y = self._state.velocity[1] + control[1] * dt
         w = self._state.velocity[2]
+
+        if world_map.is_collision(np.array([x, y]), ROBOT_RADIUS):
+            return False
+
         self._state = DoubleIntegratorRobotModelState(np.array([x, y, theta]),
                                                       np.array([v_x, v_y, w]),
                                                       control.copy())
+
+        return True

@@ -2,7 +2,8 @@ from typing import Optional
 
 import numpy as np
 
-from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel
+from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel, ROBOT_RADIUS
+from pyminisim.core._world_map import AbstractWorldMap
 
 
 class UnicycleDoubleIntegratorRobotModelState(AbstractRobotMotionModelState):
@@ -49,7 +50,7 @@ class UnicycleDoubleIntegratorRobotModel(AbstractRobotMotionModel):
         state = UnicycleDoubleIntegratorRobotModelState(initial_state, initial_control)
         super(UnicycleDoubleIntegratorRobotModel, self).__init__(state)
 
-    def step(self, dt: float, control: Optional[np.ndarray] = None) -> None:
+    def step(self, dt: float, world_map: AbstractWorldMap, control: Optional[np.ndarray] = None) -> bool:
         # TODO: Should we update velocity before step?
         if control is None:
             control = self._state.control
@@ -61,5 +62,11 @@ class UnicycleDoubleIntegratorRobotModel(AbstractRobotMotionModel):
         w = self._state.state[4] + control[1] * dt                      # w + alpha * dt
         a = control[0]
         alpha = control[1]
+
+        if world_map.is_collision(np.array([x, y]), ROBOT_RADIUS):
+            return False
+
         self._state = UnicycleDoubleIntegratorRobotModelState(np.array([x, y, theta, v, w]),
                                                               np.array([a, alpha]))
+
+        return True

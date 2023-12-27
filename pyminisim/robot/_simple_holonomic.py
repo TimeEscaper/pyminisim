@@ -2,7 +2,8 @@ from typing import Optional
 
 import numpy as np
 
-from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel
+from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel, ROBOT_RADIUS
+from pyminisim.core._world_map import AbstractWorldMap
 
 
 class SimpleHolonomicRobotModelState(AbstractRobotMotionModelState):
@@ -44,7 +45,7 @@ class SimpleHolonomicRobotModel(AbstractRobotMotionModel):
         state = SimpleHolonomicRobotModelState(initial_pose, initial_control)
         super(SimpleHolonomicRobotModel, self).__init__(state)
 
-    def step(self, dt: float, control: Optional[np.ndarray] = None):
+    def step(self, dt: float, world_map: AbstractWorldMap, control: Optional[np.ndarray] = None) -> bool:
         if control is None:
             control = self._state.control
         x = self._state.pose[0] + control[0] * dt
@@ -54,5 +55,11 @@ class SimpleHolonomicRobotModel(AbstractRobotMotionModel):
         v_x = control[0]
         v_y = control[1]
         w = control[2]
+
+        if world_map.is_collision(np.array([x, y]), ROBOT_RADIUS):
+            return False
+
         self._state = SimpleHolonomicRobotModelState(np.array([x, y, theta]),
                                                      np.array([v_x, v_y, w]))
+
+        return True

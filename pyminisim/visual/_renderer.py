@@ -202,10 +202,16 @@ class Renderer:
                 sensor.render(self._screen, state, offset)
 
     def _render_collisions(self, state: SimulationState, offset: np.ndarray):
+        robot_marker_rendered = False
+        if state.world.robot is not None and state.world.robot_to_world_collision:
+            self._render_marker(state.world.robot.pose, ROBOT_RADIUS, offset)
+            robot_marker_rendered = True
+
         if state.world.robot is not None and state.world.pedestrians is not None:
             if len(state.world.robot_to_pedestrians_collisions) == 0:
                 return
-            self._render_marker(state.world.robot.pose, ROBOT_RADIUS, offset)
+            if not robot_marker_rendered:
+                self._render_marker(state.world.robot.pose, ROBOT_RADIUS, offset)
             for idx in state.world.robot_to_pedestrians_collisions:
                 self._render_marker(state.world.pedestrians.poses[idx], PEDESTRIAN_RADIUS, offset)
 

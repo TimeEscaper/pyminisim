@@ -14,3 +14,4 @@ class WorldState:
     robot: Optional[AbstractRobotMotionModelState]
     pedestrians: Optional[AbstractPedestriansModelState]
     robot_to_pedestrians_collisions: Optional[List[int]]
+    robot_to_world_collision: bool

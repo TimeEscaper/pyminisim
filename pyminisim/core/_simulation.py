@@ -34,6 +34,8 @@ class Simulation:
         self._backup_robot_model = None
         self._backup_pedestrians_model = None
 
+        self._robot_to_world_collision = False
+
         self._current_state = self._get_simulation_state({})
 
     @property
@@ -79,6 +81,7 @@ class Simulation:
             self._robot_model.reset_to_state(state.robot)
         if self._pedestrians_model is not None:
             self._pedestrians_model.reset_to_state(state.pedestrians)
+        self._robot_to_world_collision = state.robot_to_world_collision
         self._current_state = self._get_simulation_state({})
 
     def set_robot_enabled(self, enabled: bool):
@@ -119,7 +122,7 @@ class Simulation:
         self._world_map.step(self._sim_dt)
 
         if self._robot_model is not None:
-            self._robot_model.step(self._sim_dt, control)
+            self._robot_to_world_collision = not self._robot_model.step(self._sim_dt, self._world_map, control)
             robot_pose = self._robot_model.state.pose
             robot_velocity = self._robot_model.state.velocity
         else:
@@ -155,7 +158,8 @@ class Simulation:
         return WorldState(world_map=self._world_map.current_state,
                           robot=robot_state,
                           pedestrians=pedestrians_state,
-                          robot_to_pedestrians_collisions=collisions)
+                          robot_to_pedestrians_collisions=collisions,
+                          robot_to_world_collision=self._robot_to_world_collision)
 
     def _update_sensors_state(self, world_state: WorldState, world_map: AbstractWorldMap,
                               previous_sensors_state: Dict[str, SensorState]) -> Dict[str, SensorState]:
