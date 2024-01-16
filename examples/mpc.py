@@ -12,10 +12,10 @@ import do_mpc
 import casadi
 
 from pyminisim.core import Simulation
-from pyminisim.world_map import EmptyWorld, CirclesWorld, AABBWorld
+from pyminisim.world_map import EmptyWorld, CirclesWorld, AABBWorld, AABBObject
 from pyminisim.robot import UnicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker
-from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, OmniObstacleDetector, LidarSensor, LidarSensorConfig
+from pyminisim.sensors import LidarSensor, LidarSensorConfig, SemanticDetector, SemanticDetectorConfig
 from pyminisim.visual import Renderer, CircleDrawing
 
 
@@ -172,19 +172,23 @@ OBSTACLES = np.array([[1.5, 0., 0.8]])
 def create_walls() -> AABBWorld:
     thickness = 0.3
     walls = [
-        [2.5, -2.5, 5., thickness],
-        [2.5 - thickness, -2.5, thickness, 5. - thickness],
-        [2.5 - thickness, 2.5 - thickness, thickness, 5. - thickness],
-        [-2.5 + thickness, -2.5, 5., thickness]
+        (2.5, -2.5, 5., thickness),
+        (2.5 - thickness, -2.5, thickness, 5. - thickness),
+        (2.5 - thickness, 2.5 - thickness, thickness, 5. - thickness),
+        (-2.5 + thickness, -2.5, 5., thickness)
     ]
-    return AABBWorld(boxes=np.array(walls), colors=(199, 195, 195))
+    table = (1.5, 1., 0.7, 0.7)
+    objects = [AABBObject(e, "wall", f"wall_{i}", (199, 195, 195)) for i, e in enumerate(walls)]
+    objects.append(AABBObject(table, "table", "table", (131, 235, 52)))
+    return AABBWorld(objects=objects)
 
 
 def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.]),
                                      initial_control=np.array([0., np.deg2rad(0.)]))
     sensors = [
-        LidarSensor(config=LidarSensorConfig())
+        LidarSensor(config=LidarSensorConfig()),
+        SemanticDetector(config=SemanticDetectorConfig(max_dist=3.))
     ]
     sim = Simulation(sim_dt=0.01,
                      # world_map=CirclesWorld(circles=OBSTACLES),
@@ -217,6 +221,10 @@ def main():
         renderer.render()
 
         if hold_time >= controller.dt:
+            semantic_reading = sim.current_state.sensors[SemanticDetector.NAME].reading
+            for object_id, semantic_detection in semantic_reading.detections.items():
+                print(f"{object_id}: {semantic_detection}")
+
             x_current = sim.current_state.world.robot.pose
             u_pred = controller.predict(x_current)
             hold_time = 0.
@@ -225,7 +233,7 @@ def main():
         sim.step(u_pred)
         sim.world_map.is_occupied(np.array([2.4, 2.4]))
         finish_time = time.time()
-        print(f"RT factor: {sim.sim_dt / (finish_time - start_time)}")
+        # print(f"RT factor: {sim.sim_dt / (finish_time - start_time)}")
         hold_time += sim.sim_dt
 
     # Done! Time to quit.
