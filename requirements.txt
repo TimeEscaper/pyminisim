@@ -1,7 +1,7 @@
-pygame==2.4.0
+pygame==2.6.0
 numpy
 pillow
-numba==0.56.4
+numba==0.60.0
 scipy
 Cython
 git+https://github.com/sybrenstuvel/Python-RVO2.git

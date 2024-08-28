@@ -45,7 +45,7 @@ class RandomWaypointTracker(AbstractWaypointTracker):
         current_waypoints_dict = {}
         next_waypoints_dict = {}
 
-        agents_poses_stack = np.stack(agents_poses.values(), axis=0)
+        agents_poses_stack = np.stack([agents_poses[k] for k in sorted(agents_poses.keys())], axis=0)
 
         next_waypoints = np.zeros((agents_poses_stack.shape[0], self._n_next_waypoints + 1, 2))
         next_waypoints[:, 0, :] = np.stack([self._sample_single_waypoint(p, self._min_sample_distance)
@@ -56,7 +56,7 @@ class RandomWaypointTracker(AbstractWaypointTracker):
         current_waypoints = next_waypoints[:, 0, :]
         next_waypoints = next_waypoints[:, 1:, :]
 
-        for i, agent_id in enumerate(agents_poses.keys()):
+        for i, agent_id in enumerate(sorted(agents_poses.keys())):
             current_waypoints_dict[agent_id] = current_waypoints[i, :]
             next_waypoints_dict[agent_id] = next_waypoints[i, :, :]
 
