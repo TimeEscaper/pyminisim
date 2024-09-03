@@ -11,7 +11,7 @@ import pygame
 from pyminisim.core import Simulation
 from pyminisim.world_map import EmptyWorld, CirclesWorld
 from pyminisim.robot import UnicycleRobotModel
-from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker, FixedWaypointTracker, OptimalReciprocalCollisionAvoidance
+from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker, FixedWaypointTracker, ORCAPedestriansModel, ORCAParams
 from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, \
     LidarSensor, LidarSensorNoise
 from pyminisim.visual import Renderer, CircleDrawing
@@ -48,10 +48,12 @@ def create_sim() -> Tuple[Simulation, Renderer]:
     tracker = FixedWaypointTracker(initial_positions=initial_poses[:, :2],
                                    waypoints=waypoints,
                                    loop=True)
-    pedestrians_model = OptimalReciprocalCollisionAvoidance(0.01, 
+    pedestrians_model = ORCAPedestriansModel(0.01,
                                                             tracker,
                                                             n_pedestrians,
-                                                            initial_poses=initial_poses)
+                                                            initial_poses=initial_poses,
+                                                            params=ORCAParams(default_max_speed=2.),
+                                                            max_speeds=np.random.uniform(1., 1.8, size=(n_pedestrians)))
     """
     pedestrians_model = HeadedSocialForceModelPolicy(n_pedestrians=2,
                                                      waypoint_tracker=tracker,
