@@ -93,6 +93,8 @@ class PedestrianDetector(AbstractSensor):
                 continue
 
             distance, angle_diff = self._noisify_reading(distance, angle_diff)
+            if distance is None:
+                continue
             reading = self._convert_reading(distance, angle_diff, robot_pose)
             if reading is None:
                 continue
@@ -104,7 +106,7 @@ class PedestrianDetector(AbstractSensor):
         if self._noise is None:
             return distance, angle_diff
         if not bool(np.random.binomial(1, 1. - self._noise.misdetection_prob)):
-            return None
+            return None, None
         distance = distance + np.random.normal(self._noise.distance_mu, self._noise.distance_sigma)
         angle_diff = angle_diff + np.random.normal(self._noise.angle_mu, self._noise.angle_sigma)
         return distance, angle_diff
