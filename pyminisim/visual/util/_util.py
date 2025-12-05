@@ -31,11 +31,11 @@ class PoseConverter:
             global_offset = (0., 0.)
         sim_x = simulation_pose[0] - global_offset[0]
         sim_y = simulation_pose[1] - global_offset[1]
-        x = int(sim_y * self._resolution) + self._offset_x
+        x = self._offset_x - int(sim_y * self._resolution)
         y = self._offset_y - int(sim_x * self._resolution)
         if simulation_pose.shape[0] == 2:
             return x, y
 
-        sim_theta = np.rad2deg(simulation_pose[2])
+        sim_theta = -np.rad2deg(simulation_pose[2])
         theta = (angle_offset_degrees - sim_theta + 180.) % 360. - 180.
         return x, y, theta

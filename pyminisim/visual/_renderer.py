@@ -96,9 +96,9 @@ class Renderer:
         self._grid_arrow_x = np.array([[screen_half - arrow_offset_sin, arrow_offset_cos],
                                        [screen_half, 0],
                                        [screen_half + arrow_offset_sin, arrow_offset_cos]])
-        self._grid_arrow_y = np.array([[screen_limit_y - arrow_offset_cos, screen_half - arrow_offset_sin],
-                                       [screen_limit_y, screen_half],
-                                       [screen_limit_y - arrow_offset_cos, screen_half + arrow_offset_sin]])
+        self._grid_arrow_y = np.array([[arrow_offset_cos, screen_half - arrow_offset_sin],
+                                       [0, screen_half],
+                                       [arrow_offset_cos, screen_half + arrow_offset_sin]])
         self._grid_arrow_width = max(int(0.02 * self._vis_params.resolution), 1)
 
         self._thread = None
