@@ -6,14 +6,16 @@ import time
 import numpy as np
 import pygame
 
+from pyminisim import robot
 from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS
 from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarSensorSkin, \
-    AbstractDrawing, AbstractDrawingRenderer, CircleDrawing, CircleDrawingRenderer, \
+    AbstractDrawing, CircleDrawing, CircleDrawingRenderer, \
     Covariance2dDrawing, Covariance2dDrawingRenderer
 from pyminisim.visual.util import PoseConverter
 from pyminisim.sensors import PedestrianDetector, LidarSensor
+from pyminisim.robot import UnicycleRobotModel, BicycleRobotModel
 from pyminisim.world_map import EmptyWorld, CirclesWorld, AABBWorld
-from ._agents import _RobotSkin, _PedestriansSkin
+from ._agents import _UnicycleRobotSkin, _BicycleRobotSkin, _PedestriansSkin
 from ._maps import EmptyWorldSkin, CirclesWorldSkin, AABBWorldSkin
 
 
@@ -63,7 +65,17 @@ class Renderer:
 
         self._screen = pygame.display.set_mode(screen_size)
 
-        self._robot = _RobotSkin(simulation._robot_model.radius, self._vis_params) if simulation.current_state.world.robot is not None else None
+        if simulation.current_state.world.robot is not None:
+            robot_model = simulation._robot_model
+            if isinstance(robot_model, UnicycleRobotModel):
+                self._robot = _UnicycleRobotSkin(robot_model.radius, self._vis_params)
+            elif isinstance(robot_model, BicycleRobotModel):
+                self._robot = _BicycleRobotSkin(robot_model.radius,
+                                                robot_model.wheel_base,
+                                                self._vis_params)
+        else:
+            self._robot = None
+        
         self._pedestrians = _PedestriansSkin(self._vis_params) \
             if simulation.current_state.world.pedestrians is not None else None
 
@@ -96,9 +108,9 @@ class Renderer:
         self._grid_arrow_x = np.array([[screen_half - arrow_offset_sin, arrow_offset_cos],
                                        [screen_half, 0],
                                        [screen_half + arrow_offset_sin, arrow_offset_cos]])
-        self._grid_arrow_y = np.array([[arrow_offset_cos, screen_half - arrow_offset_sin],
-                                       [0, screen_half],
-                                       [arrow_offset_cos, screen_half + arrow_offset_sin]])
+        self._grid_arrow_y = np.array([[screen_limit_y - arrow_offset_cos, screen_half - arrow_offset_sin],
+                                       [screen_limit_y, screen_half],
+                                       [screen_limit_y - arrow_offset_cos, screen_half + arrow_offset_sin]])
         self._grid_arrow_width = max(int(0.02 * self._vis_params.resolution), 1)
 
         self._thread = None

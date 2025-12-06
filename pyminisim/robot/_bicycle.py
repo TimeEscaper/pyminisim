@@ -8,12 +8,15 @@ from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionMod
 class BicycleRobotModelState(AbstractRobotMotionModelState):
 
     def __init__(self,
+                 center_pose: np.ndarray,
                  rear_pose: np.ndarray,
                  control: np.ndarray,
                  wheel_base: float):
+        assert center_pose.shape == (3,)
         assert rear_pose.shape == (3,)
         assert control.shape == (2,)
         super(BicycleRobotModelState, self).__init__()
+        self._center_pose = center_pose.copy()
         self._rear_pose = rear_pose.copy()
         self._control = control.copy()
         self._wheel_base = wheel_base
@@ -21,23 +24,16 @@ class BicycleRobotModelState(AbstractRobotMotionModelState):
     @property
     def pose(self) -> np.ndarray:
         # TODO: Should we return rear pose or center pose?
-        return self._rear_pose.copy()
+        return self._center_pose.copy()
 
     @property
     def velocity(self) -> np.ndarray:
-        # TODO: Should we return rear pose velocity or the center one?
-        theta = self._rear_pose[2]
-        v = self._control[0]
-        delta = self._control[1]
-        l = self._wheel_base
-        v_x = v * np.cos(theta)
-        v_y = v * np.sin(theta)
-        w = (v / l) * np.tan(delta)
-        return np.array([v_x, v_y, w])
+        # TODO: Proper velocity calculation
+        return np.zeros((3,))
 
     @property
     def state(self) -> np.ndarray:
-        return self._rear_pose.copy()
+        return self._center_pose.copy()
 
     @property
     def control(self) -> np.ndarray:
@@ -46,6 +42,10 @@ class BicycleRobotModelState(AbstractRobotMotionModelState):
     @property
     def wheel_base(self) -> float:
         return self._wheel_base
+
+    @property
+    def rear_pose(self) -> np.ndarray:
+        return self._rear_pose.copy()
 
 
 class BicycleRobotModel(AbstractRobotMotionModel):
@@ -60,9 +60,13 @@ class BicycleRobotModel(AbstractRobotMotionModel):
             initial_center_pose[1] - (wheel_base / 2.) * np.sin(initial_center_pose[2]),
             initial_center_pose[2]
         ])
-        state = BicycleRobotModelState(rear_pose, initial_control, wheel_base)
+        state = BicycleRobotModelState(initial_center_pose, rear_pose, initial_control, wheel_base)
         super(BicycleRobotModel, self).__init__(state, robot_radius)
         self._l = wheel_base
+
+    @property
+    def wheel_base(self) -> float:
+        return self._l
 
     def step(self, dt: float, world_map: AbstractWorldMap, control: Optional[np.ndarray] = None) -> bool:
         if control is None:
@@ -71,9 +75,10 @@ class BicycleRobotModel(AbstractRobotMotionModel):
         v = control[0]
         delta = control[1]
 
-        x_rear = self._state.pose[0] + v * np.cos(self._state.pose[2]) * dt
-        y_rear = self._state.pose[1] + v * np.sin(self._state.pose[2]) * dt
-        theta = self._state.pose[2] + (v / self._l) * np.tan(delta) * dt
+        rear_pose = self._state.rear_pose
+        x_rear = rear_pose[0] + v * np.cos(rear_pose[2]) * dt
+        y_rear = rear_pose[1] + v * np.sin(rear_pose[2]) * dt
+        theta = rear_pose[2] + (v / self._l) * np.tan(delta) * dt
         theta = (theta + np.pi) % (2 * np.pi) - np.pi
 
         d = self._l / 2.
@@ -83,7 +88,8 @@ class BicycleRobotModel(AbstractRobotMotionModel):
         if world_map.is_collision(np.array([x_center, y_center]), self._radius):
             return False
 
-        self._state = BicycleRobotModelState(np.array([x_rear, y_rear, theta]),
+        self._state = BicycleRobotModelState(np.array([x_center, y_center, theta]),
+                                             np.array([x_rear, y_rear, theta]),
                                              np.array([v, delta]),
                                              self._l)
         return True

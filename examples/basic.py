@@ -9,7 +9,7 @@ import numpy as np
 
 from pyminisim.core import Simulation
 from pyminisim.world_map import EmptyWorld, CirclesWorld
-from pyminisim.robot import UnicycleRobotModel
+from pyminisim.robot import UnicycleRobotModel, BicycleRobotModel
 from pyminisim.pedestrians import HeadedSocialForceModelPolicy, RandomWaypointTracker, FixedWaypointTracker
 from pyminisim.sensors import PedestrianDetectorNoise, PedestrianDetector, \
     LidarSensor, LidarSensorNoise
@@ -19,6 +19,10 @@ from pyminisim.visual import Renderer, CircleDrawing
 def create_sim() -> Tuple[Simulation, Renderer]:
     robot_model = UnicycleRobotModel(initial_pose=np.array([0., 0., 0.0]),
                                      initial_control=np.array([0.0, np.deg2rad(25.0)]))
+
+    # robot_model = BicycleRobotModel(wheel_base=0.324,
+    #                                 initial_center_pose=np.array([0., 0., 0.]),
+    #                                 initial_control=np.array([1., np.deg2rad(45.)]))
 
     tracker = RandomWaypointTracker(world_size=(7.0, 7.0))
     n_pedestrians = 2
@@ -32,6 +36,7 @@ def create_sim() -> Tuple[Simulation, Renderer]:
                                                      pedestrian_linear_velocity_magnitude=np.array([1.5, 2.5]),
                                                      initial_poses=np.array([[-3., -3., 0.],
                                                                              [3., 3., 0.]]))
+
     # You can model sensor's noise
     # pedestrian_detector_noise = PedestrianDetectorNoise(distance_mu=0., distance_sigma=0.2,
     #                                                     angle_mu=0., angle_sigma=0.05,
