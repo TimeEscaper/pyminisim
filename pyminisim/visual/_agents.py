@@ -7,7 +7,7 @@ import pygame
 import numpy as np
 from pygame.locals import RLEACCEL
 
-from pyminisim.core import SimulationState, ROBOT_RADIUS, PEDESTRIAN_RADIUS
+from pyminisim.core import SimulationState, PEDESTRIAN_RADIUS
 from pyminisim.visual import VisualizationParams
 from pyminisim.visual.util import PoseConverter
 
@@ -36,10 +36,10 @@ class _RobotSprite(_AbstractAgentSprite):
     _ASSET_PACKAGE = "pyminisim.visual"
     _ASSET_PATH = "assets/robot_3Dred.png"
 
-    def __init__(self, resolution: float):
+    def __init__(self, robot_radius: float, resolution: float):
         asset_full_path = pkg_resources.resource_filename(_RobotSprite._ASSET_PACKAGE,
                                                           _RobotSprite._ASSET_PATH)
-        super(_RobotSprite, self).__init__(asset_full_path, ROBOT_RADIUS, resolution)
+        super(_RobotSprite, self).__init__(asset_full_path, robot_radius, resolution)
 
 
 class _PedestrianSprite(_AbstractAgentSprite):
@@ -77,9 +77,9 @@ class _RobotSkin:
 
     _OFFSET = 90.
 
-    def __init__(self, vis_params: VisualizationParams):
+    def __init__(self, robot_radius: float, vis_params: VisualizationParams):
         self._pose_converter = PoseConverter(vis_params)
-        self._sprite = _RobotSprite(vis_params.resolution)
+        self._sprite = _RobotSprite(robot_radius, vis_params.resolution)
 
     def render(self, screen, sim_state: SimulationState, global_offset: np.ndarray):
         self._sprite.render(screen, self._pose_converter.convert(sim_state.world.robot.pose,

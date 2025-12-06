@@ -1,4 +1,2 @@
 from ._unicycle import UnicycleRobotModel
-from ._simple_holonomic import SimpleHolonomicRobotModel
-from ._double_integrator import DoubleIntegratorRobotModel
-from ._unicycle_double_integrator import UnicycleDoubleIntegratorRobotModel
+from ._bicycle import BicycleRobotModel

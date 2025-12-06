@@ -6,7 +6,7 @@ import time
 import numpy as np
 import pygame
 
-from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS, ROBOT_RADIUS
+from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS
 from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarSensorSkin, \
     AbstractDrawing, AbstractDrawingRenderer, CircleDrawing, CircleDrawingRenderer, \
     Covariance2dDrawing, Covariance2dDrawingRenderer
@@ -63,7 +63,7 @@ class Renderer:
 
         self._screen = pygame.display.set_mode(screen_size)
 
-        self._robot = _RobotSkin(self._vis_params) if simulation.current_state.world.robot is not None else None
+        self._robot = _RobotSkin(simulation._robot_model.radius, self._vis_params) if simulation.current_state.world.robot is not None else None
         self._pedestrians = _PedestriansSkin(self._vis_params) \
             if simulation.current_state.world.pedestrians is not None else None
 
@@ -204,14 +204,14 @@ class Renderer:
     def _render_collisions(self, state: SimulationState, offset: np.ndarray):
         robot_marker_rendered = False
         if state.world.robot is not None and state.world.robot_to_world_collision:
-            self._render_marker(state.world.robot.pose, ROBOT_RADIUS, offset)
+            self._render_marker(state.world.robot.pose, self._sim._robot_model.radius, offset)
             robot_marker_rendered = True
 
         if state.world.robot is not None and state.world.pedestrians is not None:
             if len(state.world.robot_to_pedestrians_collisions) == 0:
                 return
             if not robot_marker_rendered:
-                self._render_marker(state.world.robot.pose, ROBOT_RADIUS, offset)
+                self._render_marker(state.world.robot.pose, self._sim._robot_model.radius, offset)
             for idx in state.world.robot_to_pedestrians_collisions:
                 self._render_marker(state.world.pedestrians.poses[idx], PEDESTRIAN_RADIUS, offset)
 

@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel, AbstractWorldMap, ROBOT_RADIUS
+from pyminisim.core import AbstractRobotMotionModelState, AbstractRobotMotionModel, AbstractWorldMap, DEFAULT_ROBOT_RADIUS
 
 
 class BicycleRobotModelState(AbstractRobotMotionModelState):
@@ -53,14 +53,15 @@ class BicycleRobotModel(AbstractRobotMotionModel):
     def __init__(self,
                  wheel_base: float,
                  initial_center_pose: np.ndarray,
-                 initial_control: np.ndarray = np.array([0., 0.])):
+                 initial_control: np.ndarray = np.array([0., 0.]),
+                 robot_radius: float = DEFAULT_ROBOT_RADIUS):
         rear_pose = np.array([
             initial_center_pose[0] - (wheel_base / 2.) * np.cos(initial_center_pose[2]),
             initial_center_pose[1] - (wheel_base / 2.) * np.sin(initial_center_pose[2]),
             initial_center_pose[2]
         ])
         state = BicycleRobotModelState(rear_pose, initial_control, wheel_base)
-        super(BicycleRobotModel, self).__init__(state)
+        super(BicycleRobotModel, self).__init__(state, robot_radius)
         self._l = wheel_base
 
     def step(self, dt: float, world_map: AbstractWorldMap, control: Optional[np.ndarray] = None) -> bool:
@@ -79,7 +80,7 @@ class BicycleRobotModel(AbstractRobotMotionModel):
         x_center = x_rear + d * np.cos(theta)
         y_center = y_rear + d * np.sin(theta)
 
-        if world_map.is_collision(np.array([x_center, y_center]), ROBOT_RADIUS):
+        if world_map.is_collision(np.array([x_center, y_center]), self._radius):
             return False
 
         self._state = BicycleRobotModelState(np.array([x_rear, y_rear, theta]),

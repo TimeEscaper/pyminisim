@@ -1,4 +1,4 @@
-from ._constants import ROBOT_RADIUS, PEDESTRIAN_RADIUS
+from ._constants import DEFAULT_ROBOT_RADIUS, PEDESTRIAN_RADIUS
 from ._simulation_state import SimulationState
 from ._simulation import Simulation
 from ._world_map import AbstractWorldMapState, AbstractWorldMap, AbstractStaticWorldMap

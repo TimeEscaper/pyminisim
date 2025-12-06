@@ -14,7 +14,7 @@ import numpy as np
 from numba import njit
 
 from pyminisim.core import AbstractPedestriansModelState, AbstractPedestriansModel, AbstractWaypointTracker
-from pyminisim.core import ROBOT_RADIUS, PEDESTRIAN_RADIUS
+from pyminisim.core import DEFAULT_ROBOT_RADIUS, PEDESTRIAN_RADIUS
 
 
 @dataclass
@@ -204,6 +204,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
                  pedestrian_mass: float = 70.0,
                  pedestrian_linear_velocity_magnitude: Union[float, np.ndarray] = 1.5,
                  robot_visible: bool = True,
+                 robot_radius: float = DEFAULT_ROBOT_RADIUS,
                  noise_std: Optional[float] = None):
         super(HeadedSocialForceModelPolicy, self).__init__()
 
@@ -232,7 +233,7 @@ class HeadedSocialForceModelPolicy(AbstractPedestriansModel):
         self._robot_visible = robot_visible
 
         self._radii = np.repeat(PEDESTRIAN_RADIUS, self._n_pedestrians)
-        self._robot_radius = ROBOT_RADIUS
+        self._robot_radius = robot_radius
         # Masses and inertia
         self._m = np.repeat(pedestrian_mass, self._n_pedestrians)
         self._I = 0.5 * (self._radii ** 2)

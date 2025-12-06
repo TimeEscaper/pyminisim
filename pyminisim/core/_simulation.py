@@ -4,13 +4,11 @@ from typing import Optional, List, Dict
 
 import numpy as np
 
-from ._constants import ROBOT_RADIUS, PEDESTRIAN_RADIUS
+from ._constants import PEDESTRIAN_RADIUS
 from ._motion import AbstractRobotMotionModel
 from ._pedestrians_model import AbstractPedestriansModel
 from ._sensor import AbstractSensor, SensorState
 from ._simulation_state import SimulationState
-# from pyminisim.core import AbstractRobotMotionModel, AbstractPedestriansPolicy, AbstractWaypointTracker, \
-#     AbstractSensorReading, AbstractSensor, ROBOT_RADIUS, PEDESTRIAN_RADIUS
 from ._world_state import WorldState
 from ._world_map import AbstractWorldMap
 
@@ -142,7 +140,7 @@ class Simulation:
             if self._pedestrians_model is not None:
                 collisions = [k for k, v in self._pedestrians_model.state.poses.items()
                               if np.linalg.norm(self._robot_model.state.pose[:2] - v[:2])
-                              < (ROBOT_RADIUS + PEDESTRIAN_RADIUS)]
+                              < (self._robot_model.radius + PEDESTRIAN_RADIUS)]
             else:
                 collisions = None
             robot_state = self._robot_model.state
