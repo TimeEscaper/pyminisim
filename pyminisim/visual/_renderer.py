@@ -7,7 +7,7 @@ import numpy as np
 import pygame
 
 from pyminisim import robot
-from pyminisim.core import SimulationState, Simulation, PEDESTRIAN_RADIUS
+from pyminisim.core import SimulationState, Simulation, AbstractWorldMap, PEDESTRIAN_RADIUS
 from pyminisim.visual import VisualizationParams, PedestrianDetectorSkin, LidarSensorSkin, \
     AbstractDrawing, CircleDrawing, CircleDrawingRenderer, \
     Covariance2dDrawing, Covariance2dDrawingRenderer
@@ -17,6 +17,7 @@ from pyminisim.robot import UnicycleRobotModel, BicycleRobotModel
 from pyminisim.world_map import EmptyWorld, CirclesWorld, AABBWorld
 from ._agents import _UnicycleRobotSkin, _BicycleRobotSkin, _PedestriansSkin
 from ._maps import EmptyWorldSkin, CirclesWorldSkin, AABBWorldSkin
+from ._skins import AbstractMapSkin
 
 
 class _RendererThread(threading.Thread):
@@ -52,7 +53,8 @@ class Renderer:
                  screen_size: Tuple[int, int] = (500, 500),
                  fps: float = 30.0,
                  grid_enabled: bool = True,
-                 camera: str = "fixed"):
+                 camera: str = "fixed",
+                 map_skin_fn: Optional[Callable[Tuple[AbstractWorldMap, VisualizationParams], [AbstractMapSkin]]] = None):
         camera_options = (Renderer.CAMERA_FIXED, Renderer.CAMERA_ROBOT)
         assert camera in camera_options, f"Camera must be one of the strings: {camera_options}"
 
@@ -88,14 +90,17 @@ class Renderer:
                 self._sensors.append(LidarSensorSkin(sensor.sensor_config, self._vis_params))
 
         # TODO: Decouple world map visualization
-        if isinstance(self._sim.world_map, CirclesWorld):
-            self._map = CirclesWorldSkin(self._sim.world_map, self._vis_params)
-        elif isinstance(self._sim.world_map, EmptyWorld):
-            self._map = EmptyWorldSkin()
-        elif isinstance(self._sim.world_map, AABBWorld):
-            self._map = AABBWorldSkin(self._sim.world_map, self._vis_params)
+        if map_skin_fn is not None:
+            self._map = map_skin_fn(self._sim.world_map, self._vis_params)
         else:
-            raise ValueError(f"Unknown map type of {self._sim.world_map}")
+            if isinstance(self._sim.world_map, CirclesWorld):
+                self._map = CirclesWorldSkin(self._sim.world_map, self._vis_params)
+            elif isinstance(self._sim.world_map, EmptyWorld):
+                self._map = EmptyWorldSkin()
+            elif isinstance(self._sim.world_map, AABBWorld):
+                self._map = AABBWorldSkin(self._sim.world_map, self._vis_params)
+            else:
+                raise ValueError(f"Unknown map type of {self._sim.world_map}")
 
         self._drawings = {}
 
