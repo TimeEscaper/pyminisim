@@ -14,7 +14,8 @@ setup(
         'pyminisim.util',
         'pyminisim.visual',
         'pyminisim.visual.assets',
-        'pyminisim.visual.util'
+        'pyminisim.visual.util',
+        'pyminisim.world_map'
     ],
     install_requires=[
         'pygame',
